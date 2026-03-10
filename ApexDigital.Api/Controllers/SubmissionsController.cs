@@ -4,6 +4,7 @@ using ApexDigital.Domain.Entities;
 using ApexDigital.Infrastructure.FileStorage;
 using ApexDigital.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using MongoDB.Driver;
 
 namespace ApexDigital.Api.Controllers;
@@ -22,6 +23,7 @@ public class SubmissionsController : ControllerBase
 
     /// <summary>POST /api/submissions/service-request — Submit service request with optional files</summary>
     [HttpPost("service-request")]
+    [EnableRateLimiting("public-form")]
     [RequestSizeLimit(50 * 1024 * 1024)]
     [ApiExplorerSettings(IgnoreApi = true)]
     [ProducesResponseType(200)]
@@ -70,6 +72,7 @@ public class SubmissionsController : ControllerBase
 
     /// <summary>POST /api/submissions/job-application — Submit job application with resume</summary>
     [HttpPost("job-application")]
+    [EnableRateLimiting("public-form")]
     [RequestSizeLimit(25 * 1024 * 1024)]
     [ApiExplorerSettings(IgnoreApi = true)]
     public async Task<IActionResult> CreateJobApplication(
@@ -124,3 +127,4 @@ public class SubmissionsController : ControllerBase
         ModelState.Where(m => m.Value?.Errors.Count > 0)
             .ToDictionary(m => m.Key, m => m.Value!.Errors.Select(e => e.ErrorMessage).ToArray());
 }
+

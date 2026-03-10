@@ -3,6 +3,7 @@ using ApexDigital.Application.DTOs;
 using ApexDigital.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ApexDigital.Api.Controllers;
 
@@ -16,6 +17,7 @@ public class AuthController : ControllerBase
 
     /// <summary>POST /api/auth/login — Admin login</summary>
     [HttpPost("login")]
+    [EnableRateLimiting("login")]
     [ProducesResponseType(typeof(LoginResponse), 200)]
     [ProducesResponseType(typeof(ApiError), 401)]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
@@ -41,3 +43,4 @@ public class AuthController : ControllerBase
         return Ok(status);
     }
 }
+

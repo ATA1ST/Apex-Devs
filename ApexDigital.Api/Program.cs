@@ -5,8 +5,12 @@ using ApexDigital.Application.Services;
 using ApexDigital.Infrastructure.FileStorage;
 using ApexDigital.Infrastructure.Persistence;
 using ApexDigital.Infrastructure.Security;
+using ApexDigital.Infrastructure.Swagger;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+
+DotNetEnv.Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -99,7 +103,35 @@ builder.Services.AddRateLimiter(options =>
 });
 
 // ========== SWAGGER ==========
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "Enter your JWT token (without 'Bearer ' prefix)"
+    });
+
+    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new List<string>()
+        }
+    });
+
+    options.OperationFilter<AuthorizeOperationFilter>();
+});
 
 // ========== CONTROLLERS ==========
 builder.Services.AddControllers()
@@ -138,8 +170,10 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// Apply rate limiters to specific endpoints
-app.MapPost("/api/auth/login", () => { }).RequireRateLimiting("login");
-app.MapPost("/api/submissions/{**path}", () => { }).RequireRateLimiting("public-form");
-
 app.Run();
+
+
+
+
+
+
