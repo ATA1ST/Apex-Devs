@@ -32,8 +32,8 @@ export function Footer() {
 
   const socialLinks = [
     { icon: Instagram, label: 'Instagram', href: '#' },
-    { icon: Linkedin, label: 'LinkedIn', href: '#' },
-    { icon: Send, label: 'Telegram', href: '#' },
+    { icon: Linkedin, label: 'LinkedIn', href: 'https://www.linkedin.com/company/apex-digital-kz' },
+    { icon: Send, label: 'Telegram', href: 'https://t.me/+77472266885' },
   ];
 
   // Secret admin access: 7 clicks on "Владельцам"

@@ -485,11 +485,18 @@ export function HomePage() {
                     <p className="text-gray-900">{t('contact.phone')}</p>
                   </div>
                   <div className="flex gap-3 pt-4">
-                    <Button className="flex-1 bg-[#1973AE] hover:bg-[#155a8a] text-white">
+                    <Button 
+                      className="flex-1 bg-[#1973AE] hover:bg-[#155a8a] text-white"
+                      onClick={() => window.location.href = 'tel:+77472266885'}
+                    >
                       <Phone className="mr-2 h-4 w-4" />
                       {t('contact.call')}
                     </Button>
-                    <Button variant="outline" className="flex-1 border-[#1973AE] text-[#1973AE]">
+                    <Button 
+                      variant="outline" 
+                      className="flex-1 border-[#1973AE] text-[#1973AE]"
+                      onClick={() => window.open('https://t.me/+77472266885', '_blank')}
+                    >
                       <TelegramIcon className="mr-2 h-4 w-4" />
                       Telegram
                     </Button>

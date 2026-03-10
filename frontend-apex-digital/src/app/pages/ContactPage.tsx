@@ -28,8 +28,8 @@ export function ContactPage() {
 
   const socialLinks = [
     { icon: Instagram, label: 'Instagram', href: '#', color: 'hover:text-pink-600' },
-    { icon: Linkedin, label: 'LinkedIn', href: '#', color: 'hover:text-blue-600' },
-    { icon: Send, label: 'Telegram', href: '#', color: 'hover:text-blue-500' },
+    { icon: Linkedin, label: 'LinkedIn', href: 'https://www.linkedin.com/company/apex-digital-kz', color: 'hover:text-blue-600' },
+    { icon: Send, label: 'Telegram', href: 'https://t.me/+77472266885', color: 'hover:text-blue-500' },
   ];
 
   return (
