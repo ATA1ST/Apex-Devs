@@ -2,6 +2,7 @@ using System.Security.Claims;
 using ApexDigital.Application.DTOs;
 using ApexDigital.Application.Services;
 using ApexDigital.Domain.Entities;
+using ApexDigital.Infrastructure.FileStorage;
 using ApexDigital.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -15,11 +16,14 @@ namespace ApexDigital.Api.Controllers;
 public class AdminController : ControllerBase
 {
     private readonly MongoDbContext _db;
+    private readonly IFileStorageService _files;
     private readonly IAuditService _audit;
 
-    public AdminController(MongoDbContext db, IAuditService audit)
+    public AdminController(MongoDbContext db, IFileStorageService files, IAuditService audit)
     {
-        _db = db; _audit = audit;
+        _db = db;
+        _files = files;
+        _audit = audit;
     }
 
     private string AdminLogin => User.FindFirstValue(ClaimTypes.Name) ?? "unknown";
@@ -318,8 +322,15 @@ public class AdminController : ControllerBase
     [HttpDelete("applicants/{id}")]
     public async Task<IActionResult> DeleteApplicant(string id)
     {
+        var applicant = await _db.JobApplications.Find(a => a.Id == id).FirstOrDefaultAsync();
+        if (applicant == null) return NotFound(new ApiError("Заявка не найдена"));
+
+        if (!string.IsNullOrWhiteSpace(applicant.ResumeFile?.StoredFileName))
+            await _files.DeleteAsync(applicant.ResumeFile.StoredFileName, "resumes");
+
         var result = await _db.JobApplications.DeleteOneAsync(a => a.Id == id);
         if (result.DeletedCount == 0) return NotFound(new ApiError("Заявка не найдена"));
+
         await _audit.LogAsync("delete", "JobApplication", id, AdminLogin);
         return Ok(new { message = "Удалено" });
     }
@@ -359,3 +370,6 @@ public class AdminController : ControllerBase
             text.ToLowerInvariant().Trim(), @"[^a-z0-9]+", "-").Trim('-');
     }
 }
+
+
+

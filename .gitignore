@@ -7,3 +7,8 @@ uploads/
 appsettings.*.json
 !appsettings.json
 .env
+
+node_modules
+dist
+build
+.vite

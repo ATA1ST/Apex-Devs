@@ -13,6 +13,12 @@ public record LoginRequest
 public record LoginResponse(string Token, int ExpiresIn, string DisplayName);
 public record AuthStatusResponse(bool Authenticated, string? Login, string? DisplayName);
 
+public record ChangePasswordRequest
+{
+    [Required, StringLength(100, MinimumLength = 8)] public string CurrentPassword { get; init; } = null!;
+    [Required, StringLength(100, MinimumLength = 8)] public string NewPassword { get; init; } = null!;
+}
+
 // ========== COMMON ==========
 public record LocalizedStringDto
 {

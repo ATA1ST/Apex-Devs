@@ -14,23 +14,23 @@ DotNetEnv.Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ========== CONFIGURATION ==========
 builder.Services.Configure<MongoDbSettings>(builder.Configuration.GetSection("MongoDB"));
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
 builder.Services.Configure<AdminSeedSettings>(builder.Configuration.GetSection("AdminSeed"));
 
 var fileStorageSettings = builder.Configuration.GetSection("FileStorage").Get<FileStorageSettings>() ?? new FileStorageSettings();
 
-// ========== SERVICES ==========
 builder.Services.AddSingleton<MongoDbContext>();
 builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddSingleton<ITokenService, TokenService>();
-builder.Services.AddSingleton<IFileStorageService>(_ => new LocalFileStorageService(fileStorageSettings));
+builder.Services.AddSingleton<IFileStorageService>(_ =>
+    string.Equals(fileStorageSettings.Provider, "S3", StringComparison.OrdinalIgnoreCase)
+        ? new S3FileStorageService(fileStorageSettings)
+        : new LocalFileStorageService(fileStorageSettings));
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<DatabaseSeeder>();
 
-// ========== JWT AUTHENTICATION ==========
 var jwtSecret = builder.Configuration["Jwt:Secret"]
     ?? throw new InvalidOperationException("JWT Secret is required. Set Jwt:Secret in configuration.");
 
@@ -51,7 +51,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Services.AddAuthorization();
 
-// ========== CORS ==========
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
     ?? new[] { "http://localhost:5173", "http://localhost:3000" };
 
@@ -64,10 +63,8 @@ builder.Services.AddCors(options =>
             .AllowCredentials());
 });
 
-// ========== RATE LIMITING ==========
 builder.Services.AddRateLimiter(options =>
 {
-    // Login endpoint: strict limit
     options.AddPolicy("login", context =>
         RateLimitPartition.GetFixedWindowLimiter(
             context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
@@ -78,7 +75,6 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0,
             }));
 
-    // Public forms: moderate limit
     options.AddPolicy("public-form", context =>
         RateLimitPartition.GetFixedWindowLimiter(
             context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
@@ -89,7 +85,6 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 2,
             }));
 
-    // Global fallback
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
         RateLimitPartition.GetFixedWindowLimiter(
             context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
@@ -102,27 +97,26 @@ builder.Services.AddRateLimiter(options =>
     options.RejectionStatusCode = 429;
 });
 
-// ========== SWAGGER ==========
 builder.Services.AddSwaggerGen(options =>
 {
-    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
-        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Type = SecuritySchemeType.Http,
         Scheme = "bearer",
         BearerFormat = "JWT",
-        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        In = ParameterLocation.Header,
         Description = "Enter your JWT token (without 'Bearer ' prefix)"
     });
 
-    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
-            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            new OpenApiSecurityScheme
             {
-                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                Reference = new OpenApiReference
                 {
-                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Type = ReferenceType.SecurityScheme,
                     Id = "Bearer"
                 }
             },
@@ -133,7 +127,6 @@ builder.Services.AddSwaggerGen(options =>
     options.OperationFilter<AuthorizeOperationFilter>();
 });
 
-// ========== CONTROLLERS ==========
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -141,22 +134,19 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
     });
 
-// Request body size limit
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.Limits.MaxRequestBodySize = 50 * 1024 * 1024; // 50 MB
+    options.Limits.MaxRequestBodySize = 50 * 1024 * 1024;
 });
 
 var app = builder.Build();
 
-// ========== SEED DATABASE ==========
 using (var scope = app.Services.CreateScope())
 {
     var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
     await seeder.SeedAsync();
 }
 
-// ========== MIDDLEWARE PIPELINE ==========
 app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseSwagger();
 app.UseSwaggerUI(c =>
@@ -171,9 +161,3 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
-
-
-
-
-
-
