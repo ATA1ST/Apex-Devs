@@ -12,8 +12,11 @@ import { mockProjects } from '../data/mockData';
 import { Badge } from '../components/ui/badge';
 import { toast } from 'sonner';
 
+import { API_BASE_URL } from '../config/api';
+
 export function HomePage() {
   const { t, language } = useLanguage();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     company: '',
@@ -28,16 +31,70 @@ export function HomePage() {
   });
   const [formSubmitted, setFormSubmitted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.phone || !formData.consent) {
+
+    if (!formData.name.trim() || !formData.phone.trim() || !formData.consent) {
       toast.error('Заполните обязательные поля');
       return;
     }
-    // Simulate submission
-    setFormSubmitted(true);
-    toast.success(t('form.success'));
-    setTimeout(() => setFormSubmitted(false), 5000);
+
+    try {
+      setIsSubmitting(true);
+
+      const data = new FormData();
+      data.append('name', formData.name.trim());
+      data.append('company', formData.company.trim());
+      data.append('email', formData.email.trim());
+      data.append('phone', formData.phone.trim());
+      data.append('service', formData.service);
+      data.append('budget', formData.budget);
+      data.append('timeline', formData.timeline);
+      data.append('description', formData.description.trim());
+
+      formData.files.forEach((file) => {
+        data.append('files', file);
+      });
+
+      const response = await fetch(`${API_BASE_URL}/api/submissions/service-request`, {
+        method: 'POST',
+        body: data,
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        const message =
+            result?.message ||
+            result?.Message ||
+            'Ошибка при отправке заявки';
+        throw new Error(message);
+      }
+
+      setFormSubmitted(true);
+      toast.success(result?.message || t('form.success'));
+
+      setFormData({
+        name: '',
+        company: '',
+        email: '',
+        phone: '',
+        service: '',
+        budget: '',
+        timeline: '',
+        description: '',
+        consent: false,
+        files: [],
+      });
+
+      setTimeout(() => setFormSubmitted(false), 5000);
+    } catch (error) {
+      const message =
+          error instanceof Error ? error.message : 'Ошибка при отправке заявки';
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const featuredProjects = mockProjects.filter(p => p.isVisible !== false).slice(0, 3);
@@ -430,8 +487,11 @@ export function HomePage() {
                 <div className="space-y-2">
                   <Label>{t('form.upload')}</Label>
                   <FileUpload
-                    hint={t('form.upload.hint')}
-                    onFilesChange={(files) => setFormData({ ...formData, files })}
+                      hint="PDF, DOC, DOCX, JPG, JPEG, PNG, WEBP. До 20 MB, максимум 5 файлов."
+                      maxSize={20 * 1024 * 1024}
+                      maxFiles={5}
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+                      onFilesChange={(files) => setFormData({ ...formData, files })}
                   />
                 </div>
 
@@ -447,11 +507,12 @@ export function HomePage() {
                 </div>
 
                 <Button
-                  type="submit"
-                  size="lg"
-                  className="w-full bg-[#1973AE] hover:bg-[#155a8a] text-white"
+                    type="submit"
+                    size="lg"
+                    disabled={isSubmitting}
+                    className="w-full bg-[#1973AE] hover:bg-[#155a8a] text-white disabled:opacity-70"
                 >
-                  {t('form.submit')}
+                  {isSubmitting ? 'Отправка...' : t('form.submit')}
                 </Button>
               </form>
             )}

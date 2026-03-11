@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { 
-  LogOut, 
-  FolderOpen, 
-  MessageSquare, 
-  Settings, 
+import {
+  LogOut,
+  FolderOpen,
+  MessageSquare,
+  Settings,
   Image as ImageIcon,
   Plus,
   Edit,
@@ -14,62 +14,59 @@ import {
   Check,
   X,
   Upload,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Paperclip,
+  Loader2
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../components/ui/dialog';
-import { clearSession } from '../config/auth';
+import { clearSession, authFetch, downloadProtectedFile } from '../config/auth';
 import { mockProjects } from '../data/mockData';
 import { toast } from 'sonner';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+
+
+interface AttachmentInfoDto {
+  name: string;
+  size: number;
+  url: string;
+}
 
 interface Submission {
   id: string;
   name: string;
-  email: string;
-  company: string;
-  service: string;
-  budget: string;
-  description: string;
-  files: string[];
+  email?: string | null;
+  company?: string | null;
+  phone?: string | null;
+  service?: string | null;
+  budget?: string | null;
+  timeline?: string | null;
+  description?: string | null;
+  attachments: AttachmentInfoDto[];
   status: 'new' | 'processed';
+  processed: boolean;
+  adminNote?: string | null;
   createdAt: string;
+}
+
+interface PaginatedResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 export function AdminPanel() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState(mockProjects);
-  const [submissions, setSubmissions] = useState<Submission[]>([
-    {
-      id: '1',
-      name: 'Алексей Петров',
-      email: 'alex@example.com',
-      company: 'Tech Corp',
-      service: 'Web Development',
-      budget: '$50k - $100k',
-      description: 'Нужен корпоративный сайт с интеграцией CRM',
-      files: ['brief.pdf', 'mockups.zip'],
-      status: 'new',
-      createdAt: '2026-03-07T14:30:00',
-    },
-    {
-      id: '2',
-      name: 'Мария Иванова',
-      email: 'maria@startup.kz',
-      company: 'StartupKZ',
-      service: 'Mobile Development',
-      budget: '$30k - $50k',
-      description: 'MVP мобильного приложения для iOS и Android',
-      files: [],
-      status: 'processed',
-      createdAt: '2026-03-05T10:15:00',
-    },
-  ]);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(true);
+  const [updatingSubmissionId, setUpdatingSubmissionId] = useState<string | null>(null);
 
   const [editingProject, setEditingProject] = useState<string | null>(null);
   const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
@@ -93,6 +90,76 @@ export function AdminPanel() {
     toast.success('Вы вышли из системы');
   };
 
+  const serviceLabelMap: Record<string, string> = {
+    website: 'Веб-сайт',
+    web: 'Веб-сайт',
+    mobile: 'Мобильное приложение',
+    backend: 'Backend-разработка',
+    uxui: 'UX/UI дизайн',
+    ai: 'AI / ML',
+    outstaff: 'Аутстаффинг',
+  };
+
+  const budgetLabelMap: Record<string, string> = {
+    under1m: 'До 1 000 000 ₸',
+    small: 'До 1 000 000 ₸',
+    medium: '1–3 млн ₸',
+    large: '3–10 млн ₸',
+    enterprise: '10+ млн ₸',
+  };
+
+  const timelineLabelMap: Record<string, string> = {
+    asap: 'Как можно скорее',
+    week: 'До 1 недели',
+    twoweeks: '2 недели и больше',
+    month: 'До 1 месяца',
+    flexible: 'Гибко',
+  };
+
+  const getLabel = (value?: string | null, map?: Record<string, string>) => {
+    if (!value) return '—';
+    return map?.[value] || value;
+  };
+
+  const loadSubmissions = async () => {
+    try {
+      setIsLoadingSubmissions(true);
+
+      const response = await authFetch('/api/admin/service-requests?page=1&pageSize=100');
+      const raw = await response.text();
+
+      console.log('service-requests status:', response.status);
+      console.log('service-requests raw:', raw);
+
+      if (!response.ok) {
+        throw new Error(raw || 'Не удалось загрузить заявки');
+      }
+
+      const result = raw ? JSON.parse(raw) : null;
+      console.log('service-requests parsed:', result);
+
+      const items = Array.isArray(result?.items) ? result.items : [];
+      setSubmissions(items);
+    } catch (error) {
+      console.error('loadSubmissions error:', error);
+
+      const message =
+          error instanceof Error ? error.message : 'Не удалось загрузить заявки';
+
+      toast.error(message);
+
+      if (message.includes('Сессия истекла')) {
+        navigate('/admin', { replace: true });
+      }
+    } finally {
+      setIsLoadingSubmissions(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSubmissions();
+  }, []);
+
   const toggleProjectPublish = (projectId: string) => {
     setProjects(projects.map(p => 
       p.id === projectId 
@@ -110,13 +177,43 @@ export function AdminPanel() {
     }
   };
 
-  const toggleSubmissionStatus = (submissionId: string) => {
-    setSubmissions(submissions.map(s =>
-      s.id === submissionId
-        ? { ...s, status: s.status === 'new' ? 'processed' : 'new' }
-        : s
-    ));
-    toast.success('Статус заявки обновлён');
+  const toggleSubmissionStatus = async (submissionId: string) => {
+    const current = submissions.find((s) => s.id === submissionId);
+    if (!current) return;
+
+    const nextStatus = current.status === 'new' ? 'processed' : 'new';
+
+    try {
+      setUpdatingSubmissionId(submissionId);
+
+      const response = await authFetch(`/api/admin/service-requests/${submissionId}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: nextStatus,
+          adminNote: current.adminNote || null,
+        }),
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(result?.message || result?.Message || 'Не удалось обновить статус');
+      }
+
+      setSubmissions((prev) =>
+          prev.map((s) =>
+              s.id === submissionId
+                  ? { ...s, status: nextStatus as 'new' | 'processed', processed: nextStatus === 'processed' }
+                  : s
+          )
+      );
+
+      toast.success('Статус заявки обновлён');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Не удалось обновить статус');
+    } finally {
+      setUpdatingSubmissionId(null);
+    }
   };
 
   const deleteSubmission = (submissionId: string) => {
@@ -262,7 +359,7 @@ export function AdminPanel() {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs defaultValue="projects" className="space-y-6">
+        <Tabs defaultValue="submissions" className="space-y-6">
           <TabsList className="grid w-full max-w-2xl grid-cols-4">
             <TabsTrigger value="projects">
               <FolderOpen className="w-4 h-4 mr-2" />
@@ -355,96 +452,135 @@ export function AdminPanel() {
                   Всего: {submissions.length}
                 </Badge>
                 <Badge variant="destructive">
-                  Новые: {submissions.filter(s => s.status === 'new').length}
+                  Новые: {submissions.filter((s) => s.status === 'new').length}
                 </Badge>
+                <Button variant="outline" onClick={loadSubmissions} disabled={isLoadingSubmissions}>
+                  {isLoadingSubmissions ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                  Обновить
+                </Button>
               </div>
             </div>
 
-            <div className="grid gap-4">
-              {submissions.map((submission) => (
-                <div
-                  key={submission.id}
-                  className={`bg-white rounded-lg border p-6 ${
-                    submission.status === 'new' ? 'border-l-4 border-l-[#39D2ED]' : ''
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">{submission.name}</h3>
-                      <p className="text-sm text-gray-600">{submission.company}</p>
-                    </div>
-                    <Badge variant={submission.status === 'new' ? 'destructive' : 'secondary'}>
-                      {submission.status === 'new' ? 'Новая' : 'Обработано'}
-                    </Badge>
-                  </div>
+            {isLoadingSubmissions ? (
+                <div className="bg-white rounded-lg border p-10 text-center text-gray-500">
+                  Загрузка заявок...
+                </div>
+            ) : submissions.length === 0 ? (
+                <div className="bg-white rounded-lg border p-10 text-center text-gray-500">
+                  Заявок пока нет
+                </div>
+            ) : (
+                <div className="grid gap-4">
+                  {submissions.map((submission) => (
+                      <div
+                          key={submission.id}
+                          className={`bg-white rounded-lg border p-6 ${
+                              submission.status === 'new' ? 'border-l-4 border-l-[#39D2ED]' : ''
+                          }`}
+                      >
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900">{submission.name}</h3>
+                            <p className="text-sm text-gray-600">{submission.company || 'Без компании'}</p>
+                          </div>
+                          <Badge variant={submission.status === 'new' ? 'destructive' : 'secondary'}>
+                            {submission.status === 'new' ? 'Новая' : 'Обработано'}
+                          </Badge>
+                        </div>
 
-                  <div className="space-y-2 mb-4">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-500">Email:</span>
-                        <p className="text-gray-900">{submission.email}</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Услуга:</span>
-                        <p className="text-gray-900">{submission.service}</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Бюджет:</span>
-                        <p className="text-gray-900">{submission.budget}</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Дата:</span>
-                        <p className="text-gray-900">{formatDateTime(submission.createdAt)}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <span className="text-sm text-gray-500">Описание:</span>
-                      <p className="text-sm text-gray-900 mt-1">{submission.description}</p>
-                    </div>
-                    {submission.files.length > 0 && (
-                      <div>
-                        <span className="text-sm text-gray-500">Файлы:</span>
-                        <div className="flex flex-wrap gap-2 mt-1">
-                          {submission.files.map((file, idx) => (
-                            <span key={idx} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-                              📎 {file}
-                            </span>
-                          ))}
+                        <div className="space-y-2 mb-4">
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <span className="text-gray-500">Email:</span>
+                              <p className="text-gray-900">{submission.email || '—'}</p>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Телефон:</span>
+                              <p className="text-gray-900">{submission.phone || '—'}</p>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Услуга:</span>
+                              <p className="text-gray-900">{getLabel(submission.service, serviceLabelMap)}</p>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Бюджет:</span>
+                              <p className="text-gray-900">{getLabel(submission.budget, budgetLabelMap)}</p>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Срок:</span>
+                              <p className="text-gray-900">{getLabel(submission.timeline, timelineLabelMap)}</p>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Дата:</span>
+                              <p className="text-gray-900">{formatDateTime(submission.createdAt)}</p>
+                            </div>
+                          </div>
+
+                          <div>
+                            <span className="text-sm text-gray-500">Описание:</span>
+                            <p className="text-sm text-gray-900 mt-1">{submission.description || '—'}</p>
+                          </div>
+
+                          {submission.attachments.length > 0 && (
+                              <div>
+                                <span className="text-sm text-gray-500">Файлы:</span>
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                  {submission.attachments.map((file, idx) => (
+                                      <Button
+                                          key={`${submission.id}-${idx}`}
+                                          type="button"
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => openAttachment(file)}
+                                          className="h-auto py-1.5"
+                                      >
+                                        <Paperclip className="w-4 h-4 mr-2" />
+                                        {file.name}
+                                      </Button>
+                                  ))}
+                                </div>
+                              </div>
+                          )}
+                        </div>
+
+                        <div className="flex space-x-2">
+                          <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => toggleSubmissionStatus(submission.id)}
+                              disabled={updatingSubmissionId === submission.id}
+                          >
+                            {updatingSubmissionId === submission.id ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  Сохранение...
+                                </>
+                            ) : submission.status === 'new' ? (
+                                <>
+                                  <Check className="w-4 h-4 mr-2" />
+                                  Отметить обработанной
+                                </>
+                            ) : (
+                                <>
+                                  <X className="w-4 h-4 mr-2" />
+                                  Отметить новой
+                                </>
+                            )}
+                          </Button>
+
+                          <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={deleteSubmission}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Удалить
+                          </Button>
                         </div>
                       </div>
-                    )}
-                  </div>
-
-                  <div className="flex space-x-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => toggleSubmissionStatus(submission.id)}
-                    >
-                      {submission.status === 'new' ? (
-                        <>
-                          <Check className="w-4 h-4 mr-2" />
-                          Отметить обработанной
-                        </>
-                      ) : (
-                        <>
-                          <X className="w-4 h-4 mr-2" />
-                          Отметить новой
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => deleteSubmission(submission.id)}
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Удалить
-                    </Button>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+            )}
           </TabsContent>
 
           {/* Settings Tab */}

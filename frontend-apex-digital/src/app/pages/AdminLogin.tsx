@@ -4,17 +4,23 @@ import { Lock, AlertCircle, Info } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { 
-  getLogin, 
-  verifyPassword, 
-  createSession, 
-  checkRateLimit, 
-  recordFailedAttempt, 
+import {
+  loginAdmin,
+  checkRateLimit,
+  recordFailedAttempt,
   clearRateLimit,
-  isAuthenticated 
+  isAuthenticated
 } from '../config/auth';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
+} from '../components/ui/dialog';
+
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 
 export function AdminLogin() {
   const navigate = useNavigate();
@@ -63,7 +69,6 @@ export function AdminLogin() {
     e.preventDefault();
     setError('');
 
-    // Check rate limit
     const rateLimit = checkRateLimit();
     if (!rateLimit.allowed) {
       setIsLocked(true);
@@ -75,31 +80,13 @@ export function AdminLogin() {
     setIsLoading(true);
 
     try {
-      // Validate login
-      const expectedLogin = getLogin();
-      if (formData.login !== expectedLogin) {
-        recordFailedAttempt();
-        setError('Неверный логин или пароль');
-        setIsLoading(false);
-        return;
-      }
-
-      // Verify password
-      const isValid = await verifyPassword(formData.password);
-      
-      if (!isValid) {
-        recordFailedAttempt();
-        setError('Неверный логин или пароль');
-        setIsLoading(false);
-        return;
-      }
-
-      // Success - clear rate limit and create session
+      await loginAdmin(formData.login, formData.password);
       clearRateLimit();
-      createSession(formData.login);
       navigate('/admin/panel', { replace: true });
     } catch (err) {
-      setError('Ошибка при входе. Попробуйте снова.');
+      recordFailedAttempt();
+      setError(err instanceof Error ? err.message : 'Ошибка при входе. Попробуйте снова.');
+    } finally {
       setIsLoading(false);
     }
   };
