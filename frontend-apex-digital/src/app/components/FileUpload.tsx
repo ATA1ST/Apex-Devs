@@ -152,9 +152,6 @@ export function FileUpload({
               Нажмите или перетащите файлы
             </p>
             {hint && <p className="text-xs text-gray-500 mt-1">{hint}</p>}
-            <p className="text-xs text-gray-500 mt-2">
-              До {formatFileSize(maxSize)} на файл, максимум {maxFiles} файлов
-            </p>
           </div>
         </div>
       </div>

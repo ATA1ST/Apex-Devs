@@ -166,7 +166,7 @@ const translations: Record<Language, Record<string, string>> = {
     'admin.drafts': 'Черновиков',
     
     // Footer
-    'footer.slogan': 'IT-партнёр в Астане',
+    'footer.slogan': 'Apex Digital разрабатывает надёжные веб-платформы и цифровые решения для бизнеса. Мы превращаем идеи в реальные технологические продукты',
     'footer.navigation': 'Навигация',
     'footer.services': 'Услуги',
     'footer.contacts': 'Контакты',
@@ -332,7 +332,7 @@ const translations: Record<Language, Record<string, string>> = {
     'admin.drafts': 'Жобалаулар',
     
     // Footer
-    'footer.slogan': 'Астанадағы IT серіктес',
+    'footer.slogan': 'Apex Digital бизнес үшін сенімді веб-платформалар мен цифрлық шешімдерді әзірлейді. Біз идеяларды нақты технологиялық өнімдерге айналдырамыз.',
     'footer.navigation': 'Навигация',
     'footer.services': 'Қызметтер',
     'footer.contacts': 'Байланыс',
@@ -498,7 +498,7 @@ const translations: Record<Language, Record<string, string>> = {
     'admin.drafts': 'Drafts',
     
     // Footer
-    'footer.slogan': 'Your IT Partner in Astana',
+    'footer.slogan': 'Apex Digital develops robust web platforms and digital solutions for businesses. We transform ideas into tangible technology products',
     'footer.navigation': 'Navigation',
     'footer.services': 'Services',
     'footer.contacts': 'Contacts',

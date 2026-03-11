@@ -18,6 +18,14 @@ import golangLogo from '../../assets/4beb87bfb2f4c5ff00f9af5b48f41504b142bd32.pn
 import flutterLogo from '../../assets/2ce3e53251c9c6e4d051d2c8e99b9d73d2a3e0e7.png';
 import swiftLogo from '../../assets/39a95fb552d8d615001e56305fc74d41f97f4625.png';
 import kotlinLogo from '../../assets/44e03ace20846673ee8676a9d09502d40c78868d.png';
+import angularLogo from '../../assets/angular-logo.png';
+import mongoLogo from '../../assets/mongo.png';
+import mysqlLogo from '../../assets/mysql.png';
+import mssqlLogo from '../../assets/mssql.png';
+import redisLogo from '../../assets/redis.png';
+import awsLogo from '../../assets/aws.png';
+import kubernetesLogo from '../../assets/kubernetes.png';
+import nginxLogo from '../../assets/nginx.png';
 
 export function TechnologyTabs() {
   const { language } = useLanguage();
@@ -105,11 +113,8 @@ export function TechnologyTabs() {
             {/* Angular */}
             <CarouselItem className="md:basis-1/2 lg:basis-1/3">
               <div className="bg-white p-8 rounded-2xl border border-gray-200 h-full hover:shadow-lg transition-all">
-                <div className="w-16 h-16 bg-[#DD0031]/10 rounded-xl flex items-center justify-center mb-6">
-                  <svg className="w-10 h-10" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 2L3 6L4.5 18L12 22L19.5 18L21 6L12 2Z" fill="#DD0031"/>
-                    <path d="M12 2V22M3 6L12 12L21 6" stroke="white" strokeWidth="1.5"/>
-                  </svg>
+                <div className="w-16 h-16 bg-black/5 rounded-xl flex items-center justify-center mb-6">
+                  <img src={angularLogo} alt="Angular" className="w-13 h-13" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">Angular</h3>
                 <p className="text-gray-600 text-sm mb-4">
@@ -124,7 +129,7 @@ export function TechnologyTabs() {
             <CarouselItem className="md:basis-1/2 lg:basis-1/3">
               <div className="bg-white p-8 rounded-2xl border border-gray-200 h-full hover:shadow-lg transition-all">
                 <div className="w-16 h-16 bg-[#42B883]/10 rounded-xl flex items-center justify-center mb-6">
-                  <svg className="w-10 h-10" viewBox="0 0 24 24" fill="none">
+                  <svg className="w-12 h-12" viewBox="0 0 24 24" fill="none">
                     <path d="M2 3L12 21L22 3H18L12 14L6 3H2Z" fill="#42B883"/>
                     <path d="M6 3L12 14L18 3H14.5L12 7L9.5 3H6Z" fill="#35495E"/>
                   </svg>
@@ -142,7 +147,7 @@ export function TechnologyTabs() {
             <CarouselItem className="md:basis-1/2 lg:basis-1/3">
               <div className="bg-white p-8 rounded-2xl border border-gray-200 h-full hover:shadow-lg transition-all">
                 <div className="w-16 h-16 bg-[#3178C6]/10 rounded-xl flex items-center justify-center mb-6">
-                  <img src={typescriptLogo} alt="TypeScript" className="w-10 h-10" />
+                  <img src={typescriptLogo} alt="TypeScript" className="w-12 h-12" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">TypeScript</h3>
                 <p className="text-gray-600 text-sm mb-4">
@@ -157,7 +162,7 @@ export function TechnologyTabs() {
             <CarouselItem className="md:basis-1/2 lg:basis-1/3">
               <div className="bg-white p-8 rounded-2xl border border-gray-200 h-full hover:shadow-lg transition-all">
                 <div className="w-16 h-16 bg-[#F7DF1E]/10 rounded-xl flex items-center justify-center mb-6">
-                  <img src={javascriptLogo} alt="JavaScript" className="w-10 h-10" />
+                  <img src={javascriptLogo} alt="JavaScript" className="w-14 h-14" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">JavaScript</h3>
                 <p className="text-gray-600 text-sm mb-4">
@@ -341,12 +346,8 @@ export function TechnologyTabs() {
             {/* Swift (iOS) */}
             <CarouselItem className="md:basis-1/2 lg:basis-1/3">
               <div className="bg-white p-8 rounded-2xl border border-gray-200 h-full hover:shadow-lg transition-all">
-                <div className="w-16 h-16 bg-[#F05138]/10 rounded-xl flex items-center justify-center mb-6">
-                  <svg className="w-10 h-10" viewBox="0 0 24 24" fill="none">
-                    <rect x="6" y="4" width="12" height="16" rx="2" stroke="#F05138" strokeWidth="2" fill="none"/>
-                    <circle cx="12" cy="17" r="0.5" fill="#F05138"/>
-                    <path d="M9 4H15" stroke="#F05138" strokeWidth="2" strokeLinecap="round"/>
-                  </svg>
+                <div className="w-16 h-16 bg-black/5 rounded-xl flex items-center justify-center mb-6">
+                  <img src={swiftLogo} alt="Swift (iOS)" className="w-10 h-10" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">Swift (iOS)</h3>
                 <p className="text-gray-600 text-sm mb-4">
@@ -360,12 +361,8 @@ export function TechnologyTabs() {
             {/* Kotlin (Android) */}
             <CarouselItem className="md:basis-1/2 lg:basis-1/3">
               <div className="bg-white p-8 rounded-2xl border border-gray-200 h-full hover:shadow-lg transition-all">
-                <div className="w-16 h-16 bg-[#7F52FF]/10 rounded-xl flex items-center justify-center mb-6">
-                  <svg className="w-10 h-10" viewBox="0 0 24 24" fill="none">
-                    <rect x="5" y="3" width="14" height="18" rx="2" stroke="#7F52FF" strokeWidth="2" fill="none"/>
-                    <circle cx="12" cy="18" r="1" fill="#7F52FF"/>
-                    <rect x="8" y="6" width="8" height="9" rx="1" fill="#7F52FF" opacity="0.2"/>
-                  </svg>
+                <div className="w-16 h-16 bg-black/5 rounded-xl flex items-center justify-center mb-6">
+                  <img src={kotlinLogo} alt="Kotlin (Android)" className="w-10 h-10" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">Kotlin (Android)</h3>
                 <p className="text-gray-600 text-sm mb-4">
@@ -410,11 +407,8 @@ export function TechnologyTabs() {
             {/* MongoDB */}
             <CarouselItem className="md:basis-1/2 lg:basis-1/3">
               <div className="bg-white p-8 rounded-2xl border border-gray-200 h-full hover:shadow-lg transition-all">
-                <div className="w-16 h-16 bg-[#47A248]/10 rounded-xl flex items-center justify-center mb-6">
-                  <svg className="w-10 h-10" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 3L4 7.5V16.5L12 21L20 16.5V7.5L12 3Z" fill="#47A248"/>
-                    <path d="M12 12V21M4 7.5L12 12L20 7.5" stroke="white" strokeWidth="2"/>
-                  </svg>
+                <div className="w-16 h-16 bg-white/5 rounded-xl flex items-center justify-center mb-6">
+                  <img src={mongoLogo} alt="MongoDB" className="w-14 h-14" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">MongoDB</h3>
                 <p className="text-gray-600 text-sm mb-4">
@@ -427,13 +421,9 @@ export function TechnologyTabs() {
 
             {/* Redis */}
             <CarouselItem className="md:basis-1/2 lg:basis-1/3">
-              <div className="bg-white p-8 rounded-2xl border border-gray-200 h-full hover:shadow-lg transition-all">
-                <div className="w-16 h-16 bg-[#DC382D]/10 rounded-xl flex items-center justify-center mb-6">
-                  <svg className="w-10 h-10" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="#DC382D"/>
-                    <path d="M2 17L12 22L22 17L12 12L2 17Z" fill="#DC382D" opacity="0.6"/>
-                    <path d="M2 12L12 17L22 12" stroke="#DC382D" strokeWidth="2" fill="none" opacity="0.4"/>
-                  </svg>
+              <div className="bg-white p-8 rounded-2xl border border-white-200 h-full hover:shadow-lg transition-all">
+                <div className="w-16 h-16 bg-white/5 rounded-xl flex items-center justify-center mb-6">
+                  <img src={redisLogo} alt="Redis" className="w-14 h-14" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">Redis</h3>
                 <p className="text-gray-600 text-sm mb-4">
@@ -446,21 +436,30 @@ export function TechnologyTabs() {
 
             {/* MySQL */}
             <CarouselItem className="md:basis-1/2 lg:basis-1/3">
-              <div className="bg-white p-8 rounded-2xl border border-gray-200 h-full hover:shadow-lg transition-all">
-                <div className="w-16 h-16 bg-[#4479A1]/10 rounded-xl flex items-center justify-center mb-6">
-                  <svg className="w-10 h-10" viewBox="0 0 24 24" fill="none">
-                    <path d="M5 12C5 12 7 10 9 10C11 10 11 12 13 12C15 12 17 10 17 10V14C17 14 15 16 13 16C11 16 11 14 9 14C7 14 5 16 5 16V12Z" fill="#4479A1"/>
-                    <circle cx="6" cy="8" r="1.5" fill="#4479A1"/>
-                    <circle cx="10" cy="8" r="1.5" fill="#4479A1"/>
-                    <circle cx="14" cy="8" r="1.5" fill="#4479A1"/>
-                    <circle cx="18" cy="8" r="1.5" fill="#4479A1"/>
-                  </svg>
+              <div className="bg-white p-8 rounded-2xl border border-white-200 h-full hover:shadow-lg transition-all">
+                <div className="w-16 h-16 bg-white/5 rounded-xl flex items-center justify-center mb-6">
+                  <img src={mysqlLogo} alt="MySQL" className="w-16 h-14" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">MySQL</h3>
                 <p className="text-gray-600 text-sm mb-4">
                   {language === 'ru' && 'Популярная open-source реляционная СУБД. Надёжность, простота использования, отличная производительность. Поддержка ACID, репликация, партиционирование. Широко используется в веб-разработке и enterprise-проектах.'}
-                  {language === 'kz' && 'Таны��ал open-source реляциялық ДҚБЖ. Сенімділік, пайдалану қарапайымдылығы, керемет өнімділік. ACID қолдауы, репликация, партициялау. Веб-әзірлеу және enterprise жобаларда кеңінен қолданылады.'}
+                  {language === 'kz' && 'Танымал open-source реляциялық ДҚБЖ. Сенімділік, пайдалану қарапайымдылығы, керемет өнімділік. ACID қолдауы, репликация, партициялау. Веб-әзірлеу және enterprise жобаларда кеңінен қолданылады.'}
                   {language === 'en' && 'Popular open-source relational DBMS. Reliability, ease of use, excellent performance. ACID support, replication, partitioning. Widely used in web development and enterprise projects.'}
+                </p>
+              </div>
+            </CarouselItem>
+
+                        {/* MsSQL */}
+            <CarouselItem className="md:basis-1/2 lg:basis-1/3">
+              <div className="bg-white p-8 rounded-2xl border border-white-200 h-full hover:shadow-lg transition-all">
+                <div className="w-16 h-16 bg-white/5 rounded-xl flex items-center justify-center mb-6">
+                  <img src={mssqlLogo} alt="MsSQL" className="w-16 h-14" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">MsSQL</h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  {language === 'ru' && 'Корпоративная реляционная система управления базами данных от Microsoft. Полная поддержка ACID-транзакций, мощный SQL-движок, развитые инструменты безопасности и аналитики. Высокая производительность, масштабируемость, интеграция с .NET, Azure и BI-инструментами для построения надёжных enterprise-решений.'}
+                  {language === 'kz' && 'Microsoft әзірлеген корпоративтік реляциялық деректер қорын басқару жүйесі. ACID-транзакцияларды толық қолдау, қуатты SQL қозғалтқышы, қауіпсіздік және аналитика құралдары дамыған. Жоғары өнімділік, масштабталу мүмкіндігі және .NET, Azure және BI құралдарымен интеграция арқылы enterprise деңгейіндегі шешімдер жасауға мүмкіндік береді'}
+                  {language === 'en' && 'Enterprise-grade relational database management system developed by Microsoft. Full ACID transaction support, powerful SQL engine, advanced security and analytics tools. High performance, scalability, and deep integration with .NET, Azure, and BI tools for building reliable enterprise solutions'}
                 </p>
               </div>
             </CarouselItem>
@@ -483,12 +482,8 @@ export function TechnologyTabs() {
             {/* Kubernetes */}
             <CarouselItem className="md:basis-1/2 lg:basis-1/3">
               <div className="bg-white p-8 rounded-2xl border border-gray-200 h-full hover:shadow-lg transition-all">
-                <div className="w-16 h-16 bg-[#326CE5]/10 rounded-xl flex items-center justify-center mb-6">
-                  <svg className="w-10 h-10" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 2L3 7V17L12 22L21 17V7L12 2Z" stroke="#326CE5" strokeWidth="2" fill="none"/>
-                    <circle cx="12" cy="12" r="3" fill="#326CE5"/>
-                    <path d="M12 9V2M12 22V15M9 12L3 9M21 9L15 12M9 12L3 15M21 15L15 12" stroke="#326CE5" strokeWidth="1.5"/>
-                  </svg>
+                <div className="w-16 h-16 bg-black/5 rounded-xl flex items-center justify-center mb-6">
+                  <img src={kubernetesLogo} alt="Kubernetes" className="w-15 h-15" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">Kubernetes</h3>
                 <p className="text-gray-600 text-sm mb-4">
@@ -502,10 +497,8 @@ export function TechnologyTabs() {
             {/* AWS */}
             <CarouselItem className="md:basis-1/2 lg:basis-1/3">
               <div className="bg-white p-8 rounded-2xl border border-gray-200 h-full hover:shadow-lg transition-all">
-                <div className="w-16 h-16 bg-[#FF9900]/10 rounded-xl flex items-center justify-center mb-6">
-                  <svg className="w-10 h-10" viewBox="0 0 24 24" fill="none">
-                    <path d="M6 14L12 18L18 14M6 10L12 14L18 10M12 2L6 6L12 10L18 6L12 2Z" fill="#FF9900"/>
-                  </svg>
+                <div className="w-16 h-16 bg-black/5 rounded-xl flex items-center justify-center mb-6">
+                  <img src={awsLogo} alt="AWS" className="w-15 h-15" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">AWS</h3>
                 <p className="text-gray-600 text-sm mb-4">
@@ -519,11 +512,8 @@ export function TechnologyTabs() {
             {/* Nginx */}
             <CarouselItem className="md:basis-1/2 lg:basis-1/3">
               <div className="bg-white p-8 rounded-2xl border border-gray-200 h-full hover:shadow-lg transition-all">
-                <div className="w-16 h-16 bg-[#009639]/10 rounded-xl flex items-center justify-center mb-6">
-                  <svg className="w-10 h-10" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 2L4 6V18L12 22L20 18V6L12 2Z" fill="#009639"/>
-                    <path d="M8 8V16L16 8V16" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+                <div className="w-16 h-16 bg-white/5 rounded-xl flex items-center justify-center mb-6">
+                  <img src={nginxLogo} alt="Nginx" className="w-15 h-15" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">Nginx</h3>
                 <p className="text-gray-600 text-sm mb-4">
