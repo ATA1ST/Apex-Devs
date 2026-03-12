@@ -129,8 +129,8 @@ export function ProjectsPage() {
           ) : filteredProjects.length === 0 ? (
             <div className="text-center py-20">
               <p className="text-gray-500">
-                {language === 'ru' && 'РџСЂРѕРµРєС‚С‹ РЅРµ РЅР°Р№РґРµРЅС‹'}
-                {language === 'kz' && 'Р–РѕР±Р°Р»Р°СЂ С‚Р°Р±С‹Р»РјР°РґС‹'}
+                {language === 'ru' && 'Проекты не найдены'}
+                {language === 'kz' && 'Жобалар табылмады'}
                 {language === 'en' && 'No projects found'}
               </p>
             </div>
@@ -215,12 +215,12 @@ export function ProjectsPage() {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
-              {language === 'ru' && 'РҐРѕС‚РёС‚Рµ РїРѕС…РѕР¶РёР№ РїСЂРѕРµРєС‚?'}
+              {language === 'ru' && 'Хотите похожий проект?'}
               {language === 'kz' && 'Ұқсас жоба қалайсыз ба?'}
               {language === 'en' && 'Want a Similar Project?'}
             </h2>
             <p className="text-lg text-gray-600 mb-8">
-              {language === 'ru' && 'Р Р°СЃСЃРєР°Р¶РёС‚Рµ Рѕ СЃРІРѕРµР№ РёРґРµРµ, Рё РјС‹ РїСЂРµРґР»РѕР¶РёРј СЂРµС€РµРЅРёРµ'}
+              {language === 'ru' && 'Расскажите о своей идее, и мы предложим решение'}
               {language === 'kz' && 'Идеяңыз туралы айтыңыз, біз шешім ұсынамыз'}
               {language === 'en' && 'Tell us about your idea, and we\'ll propose a solution'}
             </p>

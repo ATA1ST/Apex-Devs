@@ -90,7 +90,7 @@ export async function loginAdmin(login: string, password: string): Promise<Login
   const result = (await response.json().catch(() => null)) as LoginResponse | ApiErrorPayload | null;
 
   if (!response.ok) {
-    throw new Error(getApiErrorMessage(result as ApiErrorPayload | null, 'РћС€РёР±РєР° РІС…РѕРґР°'));
+    throw new Error(getApiErrorMessage(result as ApiErrorPayload | null, 'Ошибка входа'));
   }
 
   const data = result as LoginResponse;
@@ -103,7 +103,7 @@ export async function authFetch(input: string, init: RequestInit = {}) {
 
   if (!token) {
     clearSession();
-    throw new Error('РЎРµСЃСЃРёСЏ РёСЃС‚РµРєР»Р°. Р’РѕР№РґРёС‚Рµ СЃРЅРѕРІР°.');
+    throw new Error('Сессия истекла. Войдите снова.');
   }
 
   const headers = new Headers(init.headers || {});
@@ -121,7 +121,7 @@ export async function authFetch(input: string, init: RequestInit = {}) {
 
   if (response.status === 401) {
     clearSession();
-    throw new Error('РЎРµСЃСЃРёСЏ РёСЃС‚РµРєР»Р°. Р’РѕР№РґРёС‚Рµ СЃРЅРѕРІР°.');
+    throw new Error('Сессия истекла. Войдите снова.');
   }
 
   return response;
@@ -132,7 +132,7 @@ export async function downloadProtectedFile(url: string, fileName?: string) {
 
   if (!response.ok) {
     const text = await response.text().catch(() => '');
-    throw new Error(text || 'РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РєСЂС‹С‚СЊ С„Р°Р№Р»');
+    throw new Error(text || 'Не удалось открыть файл');
   }
 
   const blob = await response.blob();

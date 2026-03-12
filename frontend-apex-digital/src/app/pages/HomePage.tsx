@@ -80,7 +80,7 @@ export function HomePage() {
     e.preventDefault();
 
     if (!formData.name.trim() || !formData.phone.trim() || !formData.consent) {
-      toast.error('Р—Р°РїРѕР»РЅРёС‚Рµ РѕР±СЏР·Р°С‚РµР»СЊРЅС‹Рµ РїРѕР»СЏ');
+      toast.error('Заполните обязательные поля');
       return;
     }
 
@@ -109,7 +109,7 @@ export function HomePage() {
       const result = (await response.json().catch(() => null)) as ApiErrorPayload | { message?: string } | null;
 
       if (!response.ok) {
-        throw new Error(getApiErrorMessage(result as ApiErrorPayload | null, 'РћС€РёР±РєР° РїСЂРё РѕС‚РїСЂР°РІРєРµ Р·Р°СЏРІРєРё'));
+        throw new Error(getApiErrorMessage(result as ApiErrorPayload | null, 'Ошибка при отправке заявки'));
       }
 
       setFormSubmitted(true);
@@ -129,7 +129,7 @@ export function HomePage() {
 
       setTimeout(() => setFormSubmitted(false), 5000);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'РћС€РёР±РєР° РїСЂРё РѕС‚РїСЂР°РІРєРµ Р·Р°СЏРІРєРё');
+      toast.error(error instanceof Error ? error.message : 'Ошибка при отправке заявки');
     } finally {
       setIsSubmitting(false);
     }
@@ -531,7 +531,7 @@ export function HomePage() {
                   disabled={isSubmitting}
                   className="w-full bg-[#1973AE] hover:bg-[#155a8a] text-white disabled:opacity-70"
                 >
-                  {isSubmitting ? 'РћС‚РїСЂР°РІРєР°...' : t('form.submit')}
+                  {isSubmitting ? 'Отправка...' : t('form.submit')}
                 </Button>
               </form>
             )}
@@ -556,7 +556,9 @@ export function HomePage() {
                 </h3>
                 <div className="space-y-4">
                   <div>
-                    <p className="text-sm text-gray-500 mb-1">РђРґСЂРµСЃ</p>
+                    <p className="text-sm text-gray-500 mb-1">
+                      {language === 'ru' ? 'Адрес' : language === 'kz' ? 'Мекенжай' : 'Address'}
+                    </p>
                     <p className="text-gray-900">{settings.address[language]}</p>
                   </div>
                   <div>

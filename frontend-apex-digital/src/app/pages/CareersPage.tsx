@@ -29,7 +29,7 @@ export function CareersPage() {
           throw new Error(
               result?.message ||
               result?.Message ||
-              'РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ РІР°РєР°РЅСЃРёРё'
+              'Не удалось загрузить вакансии'
           );
         }
 
@@ -38,7 +38,7 @@ export function CareersPage() {
         }
       } catch (err) {
         if (!ignore) {
-          setError(err instanceof Error ? err.message : 'РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё РІР°РєР°РЅСЃРёР№');
+          setError(err instanceof Error ? err.message : 'Ошибка загрузки вакансий');
           setJobs([]);
         }
       } finally {
@@ -57,19 +57,19 @@ export function CareersPage() {
 
   const getDepartmentLabel = (dept: string) => {
     const labels = {
-      dev: { ru: 'Р Р°Р·СЂР°Р±РѕС‚РєР°', kz: 'УР·С–СЂР»РµСѓ', en: 'Development' },
-      design: { ru: 'Р”РёР·Р°Р№РЅ', kz: 'Р”РёР·Р°Р№РЅ', en: 'Design' },
-      pm: { ru: 'РњРµРЅРµРґР¶РјРµРЅС‚', kz: 'РњРµРЅРµРґР¶РјРµРЅС‚', en: 'Management' },
-      other: { ru: 'Р”СЂСѓРіРѕРµ', kz: 'Р‘Р°СЃТ›Р°', en: 'Other' },
+      dev: { ru: 'Разработка', kz: 'Әзірлеу', en: 'Development' },
+      design: { ru: 'Дизайн', kz: 'Дизайн', en: 'Design' },
+      pm: { ru: 'Менеджмент', kz: 'Менеджмент', en: 'Management' },
+      other: { ru: 'Другое', kz: 'Басқа', en: 'Other' },
     };
     return labels[dept as keyof typeof labels]?.[language] || dept;
   };
 
   const getLocationLabel = (loc: string) => {
     const labels = {
-      astana: { ru: 'РђСЃС‚Р°РЅР°', kz: 'РђСЃС‚Р°РЅР°', en: 'Astana' },
-      remote: { ru: 'РЈРґР°Р»С‘РЅРЅРѕ', kz: 'ТљР°С€С‹Т›С‚Р°РЅ', en: 'Remote' },
-      hybrid: { ru: 'Р“РёР±СЂРёРґ', kz: 'Р“РёР±СЂРёРґ', en: 'Hybrid' },
+      astana: { ru: 'Астана', kz: 'Астана', en: 'Astana' },
+      remote: { ru: 'Удалённо', kz: 'Қашықтан', en: 'Remote' },
+      hybrid: { ru: 'Гибрид', kz: 'Гибрид', en: 'Hybrid' },
     };
     return labels[loc as keyof typeof labels]?.[language] || loc;
   };
@@ -79,10 +79,10 @@ export function CareersPage() {
     const now = new Date();
     const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
 
-    if (diffDays === 0) return language === 'ru' ? 'РЎРµРіРѕРґРЅСЏ' : language === 'kz' ? 'Р‘ТЇРіС–РЅ' : 'Today';
-    if (diffDays === 1) return language === 'ru' ? 'Р’С‡РµСЂР°' : language === 'kz' ? 'РљРµС€Рµ' : 'Yesterday';
-    if (diffDays < 7) return `${diffDays} ${language === 'ru' ? 'РґРЅ. РЅР°Р·Р°Рґ' : language === 'kz' ? 'РєТЇРЅ Р±Т±СЂС‹РЅ' : 'd ago'}`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} ${language === 'ru' ? 'РЅРµРґ. РЅР°Р·Р°Рґ' : language === 'kz' ? 'Р°РїС‚Р° Р±Т±СЂС‹РЅ' : 'w ago'}`;
+    if (diffDays === 0) return language === 'ru' ? 'Сегодня' : language === 'kz' ? 'Бүгін' : 'Today';
+    if (diffDays === 1) return language === 'ru' ? 'Вчера' : language === 'kz' ? 'Кеше' : 'Yesterday';
+    if (diffDays < 7) return `${diffDays} ${language === 'ru' ? 'дн. назад' : language === 'kz' ? 'күн бұрын' : 'd ago'}`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} ${language === 'ru' ? 'нед. назад' : language === 'kz' ? 'апта бұрын' : 'w ago'}`;
     return date.toLocaleDateString(language === 'ru' ? 'ru-RU' : language === 'kz' ? 'kk-KZ' : 'en-US');
   };
 
@@ -96,13 +96,13 @@ export function CareersPage() {
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             <div className="max-w-4xl mx-auto text-center">
               <h1 className="text-5xl md:text-7xl font-bold text-white mb-8">
-                {language === 'ru' && 'Р’Р°РєР°РЅСЃРёРё Apex Digital'}
-                {language === 'kz' && 'Apex Digital РІР°РєР°РЅСЃРёСЏР»Р°СЂС‹'}
+                {language === 'ru' && 'Вакансии Apex Digital'}
+                {language === 'kz' && 'Apex Digital вакансиялары'}
                 {language === 'en' && 'Apex Digital Careers'}
               </h1>
               <p className="text-2xl md:text-3xl text-white/95 leading-relaxed">
-                {language === 'ru' && 'Р Р°Р±РѕС‚Р°Р№С‚Рµ РЅР°Рґ СЃР»РѕР¶РЅС‹РјРё Р·Р°РґР°С‡Р°РјРё РІ СЃРёР»СЊРЅРѕР№ РєРѕРјР°РЅРґРµ. Р§РёСЃС‚С‹Р№ РєРѕРґ, СЃРѕРІСЂРµРјРµРЅРЅС‹Р№ СЃС‚РµРє, РїСЂРѕР·СЂР°С‡РЅС‹Рµ РїСЂРѕС†РµСЃСЃС‹.'}
-                {language === 'kz' && 'РљТЇС€С‚С– РєРѕРјР°РЅРґР°РґР° РєТЇСЂРґРµР»С– РјС–РЅРґРµС‚С‚РµСЂ ТЇСЃС‚С–РЅРґРµ Р¶Т±РјС‹СЃ Р¶Р°СЃР°ТЈС‹Р·. РўР°Р·Р° РєРѕРґ, Р·Р°РјР°РЅР°СѓРё СЃС‚РµРє, Р°С€С‹Т› РїСЂРѕС†РµСЃС‚РµСЂ.'}
+                {language === 'ru' && 'Работайте над сложными задачами в сильной команде. Чистый код, современный стек, прозрачные процессы.'}
+                {language === 'kz' && 'Күшті командада күрделі міндеттер үстінде жұмыс жасаңыз. Таза код, заманауи стек, ашық процестер.'}
                 {language === 'en' && 'Work on complex challenges with a strong team. Clean code, modern stack, transparent processes.'}
               </p>
             </div>
@@ -120,15 +120,15 @@ export function CareersPage() {
             <div className="max-w-5xl mx-auto">
               {isLoading ? (
                   <div className="text-center py-20 text-gray-600">
-                    {language === 'ru' && 'Р—Р°РіСЂСѓР·РєР° РІР°РєР°РЅСЃРёР№...'}
-                    {language === 'kz' && 'Р’Р°РєР°РЅСЃРёСЏР»Р°СЂ Р¶ТЇРєС‚РµР»СѓРґРµ...'}
+                    {language === 'ru' && 'Загрузка вакансий...'}
+                    {language === 'kz' && 'Вакансиялар жүктелуде...'}
                     {language === 'en' && 'Loading jobs...'}
                   </div>
               ) : error ? (
                   <div className="text-center py-20">
                     <h3 className="text-2xl font-semibold text-gray-900 mb-3">
-                      {language === 'ru' && 'РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё'}
-                      {language === 'kz' && 'Р–ТЇРєС‚РµСѓ Т›Р°С‚РµСЃС–'}
+                      {language === 'ru' && 'Ошибка загрузки'}
+                      {language === 'kz' && 'Жүктеу қатесі'}
                       {language === 'en' && 'Loading error'}
                     </h3>
                     <p className="text-lg text-gray-600">{error}</p>
@@ -141,13 +141,13 @@ export function CareersPage() {
                       </svg>
                     </div>
                     <h3 className="text-2xl font-semibold text-gray-900 mb-3">
-                      {language === 'ru' && 'Р’Р°РєР°РЅСЃРёР№ РЅРµС‚'}
-                      {language === 'kz' && 'Р’Р°РєР°РЅСЃРёСЏР»Р°СЂ Р¶РѕТ›'}
+                      {language === 'ru' && 'Вакансий нет'}
+                      {language === 'kz' && 'Вакансиялар жоқ'}
                       {language === 'en' && 'No vacancies'}
                     </h3>
                     <p className="text-lg text-gray-600">
-                      {language === 'ru' && 'РќР° РґР°РЅРЅС‹Р№ РјРѕРјРµРЅС‚ РѕС‚РєСЂС‹С‚С‹С… РІР°РєР°РЅСЃРёР№ РЅРµС‚. РЎР»РµРґРёС‚Рµ Р·Р° РѕР±РЅРѕРІР»РµРЅРёСЏРјРё!'}
-                      {language === 'kz' && 'ТљР°Р·С–СЂРіС– СѓР°Т›С‹С‚С‚Р° Р°С€С‹Т› РІР°РєР°РЅСЃРёСЏР»Р°СЂ Р¶РѕТ›. Р–Р°ТЈР°СЂС‚СѓР»Р°СЂРґС‹ Т›Р°РґР°Т“Р°Р»Р°ТЈС‹Р·!'}
+                      {language === 'ru' && 'На данный момент открытых вакансий нет. Следите за обновлениями!'}
+                      {language === 'kz' && 'Қазіргі уақытта ашық вакансиялар жоқ. Жаңартуларды қадағалаңыз!'}
                       {language === 'en' && 'No open positions at the moment. Stay tuned for updates!'}
                     </p>
                   </div>
@@ -167,8 +167,8 @@ export function CareersPage() {
                                     {job.title[language]}
                                   </h3>
                                   <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                                    {language === 'ru' && 'РћС‚РєСЂС‹С‚Р°'}
-                                    {language === 'kz' && 'РђС€С‹Т›'}
+                                    {language === 'ru' && 'Открыта'}
+                                    {language === 'kz' && 'Ашық'}
                                     {language === 'en' && 'Open'}
                                   </Badge>
                                 </div>
@@ -218,8 +218,8 @@ export function CareersPage() {
                                   size="lg"
                                   className="flex-shrink-0 group-hover:bg-[#1973AE] group-hover:text-white group-hover:border-[#1973AE] transition-all"
                               >
-                                {language === 'ru' && 'РџРѕРґСЂРѕР±РЅРµРµ'}
-                                {language === 'kz' && 'РўРѕР»С‹Т“С‹СЂР°Т›'}
+                                {language === 'ru' && 'Подробнее'}
+                                {language === 'kz' && 'Толығырақ'}
                                 {language === 'en' && 'Details'}
                                 <ChevronRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                               </Button>
