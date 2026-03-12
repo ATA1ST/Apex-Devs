@@ -447,10 +447,7 @@ export function AboutPage() {
               size="lg"
               className="bg-white text-[#1973AE] hover:bg-gray-100"
               onClick={() => {
-                window.location.hash = 'home';
-                setTimeout(() => {
-                  document.querySelector('#contact-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }, 100);
+                window.location.href = '/#contact-form';
               }}
             >
               {t('nav.cta')}

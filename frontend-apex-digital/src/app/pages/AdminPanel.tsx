@@ -33,6 +33,7 @@ import {
 import { clearSession, authFetch, downloadProtectedFile } from '../config/auth';
 import { toast } from 'sonner';
 import { VacanciesManagement } from './admin/VacanciesManagement';
+import type { SiteSettingsDto } from '../types/api';
 
 interface AttachmentInfoDto {
   name: string;
@@ -92,6 +93,20 @@ interface AdminProjectDto {
   timeline?: LocalizedStringDto | null;
 }
 
+const defaultSiteSettings: SiteSettingsDto = {
+  phone: '+7 747 226 68 85',
+  email: 'info@apexdigital.kz',
+  address: {
+    ru: 'Астана, Казахстан',
+    kz: 'Астана, Қазақстан',
+    en: 'Astana, Kazakhstan',
+  },
+  instagram: '',
+  linkedin: '',
+  telegram: '',
+  whatsapp: '',
+};
+
 export function AdminPanel() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<AdminProjectDto[]>([]);
@@ -101,6 +116,9 @@ export function AdminPanel() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(true);
   const [updatingSubmissionId, setUpdatingSubmissionId] = useState<string | null>(null);
+  const [settingsForm, setSettingsForm] = useState<SiteSettingsDto>(defaultSiteSettings);
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   const [editingProject, setEditingProject] = useState<string | null>(null);
   const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
@@ -207,9 +225,77 @@ export function AdminPanel() {
     }
   };
 
+  const loadSettings = async () => {
+    try {
+      setIsLoadingSettings(true);
+
+      const response = await authFetch('/api/admin/settings');
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(result?.message || result?.Message || 'Failed to load site settings');
+      }
+
+      setSettingsForm({
+        ...defaultSiteSettings,
+        ...(result || {}),
+        address: {
+          ...defaultSiteSettings.address,
+          ...(result?.address || {}),
+        },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to load site settings';
+      toast.error(message);
+
+      if (message.includes('Session expired')) {
+        navigate('/admin', { replace: true });
+      }
+    } finally {
+      setIsLoadingSettings(false);
+    }
+  };
+
+  const saveSettings = async () => {
+    try {
+      setIsSavingSettings(true);
+
+      const response = await authFetch('/api/admin/settings', {
+        method: 'PUT',
+        body: JSON.stringify(settingsForm),
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(result?.message || result?.Message || 'Failed to save site settings');
+      }
+
+      setSettingsForm({
+        ...defaultSiteSettings,
+        ...(result || {}),
+        address: {
+          ...defaultSiteSettings.address,
+          ...(result?.address || {}),
+        },
+      });
+      toast.success('Contact information updated');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to save site settings';
+      toast.error(message);
+
+      if (message.includes('Session expired')) {
+        navigate('/admin', { replace: true });
+      }
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
   useEffect(() => {
     loadSubmissions();
     loadProjects();
+    loadSettings();
   }, []);
 
   const toggleProjectPublish = async (projectId: string) => {
@@ -304,10 +390,33 @@ export function AdminPanel() {
     }
   };
 
-  const deleteSubmission = (submissionId: string) => {
-    if (confirm('Удалить эту заявку?')) {
-      setSubmissions(submissions.filter((s) => s.id !== submissionId));
-      toast.success('Заявка удалена');
+  const deleteSubmission = async (submissionId: string) => {
+    if (!confirm('Delete this request?')) return;
+
+    try {
+      setUpdatingSubmissionId(submissionId);
+
+      const response = await authFetch(`/api/admin/service-requests/${submissionId}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(result?.message || result?.Message || 'Failed to delete request');
+      }
+
+      setSubmissions((prev) => prev.filter((s) => s.id !== submissionId));
+      toast.success(result?.message || 'Request deleted');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to delete request';
+      toast.error(message);
+
+      if (message.includes('Session expired')) {
+        navigate('/admin', { replace: true });
+      }
+    } finally {
+      setUpdatingSubmissionId(null);
     }
   };
 
@@ -951,53 +1060,77 @@ export function AdminPanel() {
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900">Настройки сайта</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Site Settings</h2>
 
             <div className="bg-white rounded-lg border p-6 space-y-6">
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900">Контактная информация</h3>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Телефон</Label>
-                    <Input defaultValue="+7 747 226 68 85" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Email</Label>
-                    <Input defaultValue="info@apexdigital.kz" />
-                  </div>
+              {isLoadingSettings ? (
+                <div className="flex items-center gap-3 text-gray-600">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Loading settings...</span>
                 </div>
+              ) : (
+                <>
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Contact Information</h3>
 
-                <div className="space-y-2">
-                  <Label>Адрес</Label>
-                  <Input defaultValue="Астана, Казахстан" />
-                </div>
-              </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Phone</Label>
+                        <Input value={settingsForm.phone} onChange={(e) => setSettingsForm((current) => ({ ...current, phone: e.target.value }))} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Email</Label>
+                        <Input value={settingsForm.email} onChange={(e) => setSettingsForm((current) => ({ ...current, email: e.target.value }))} />
+                      </div>
+                    </div>
 
-              <div className="space-y-4 pt-6 border-t">
-                <h3 className="text-lg font-semibold text-gray-900">Социальные сети</h3>
-
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Label>Instagram</Label>
-                    <Input placeholder="https://instagram.com/..." />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Address (RU)</Label>
+                        <Input value={settingsForm.address.ru} onChange={(e) => setSettingsForm((current) => ({ ...current, address: { ...current.address, ru: e.target.value } }))} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Address (KZ)</Label>
+                        <Input value={settingsForm.address.kz} onChange={(e) => setSettingsForm((current) => ({ ...current, address: { ...current.address, kz: e.target.value } }))} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Address (EN)</Label>
+                        <Input value={settingsForm.address.en} onChange={(e) => setSettingsForm((current) => ({ ...current, address: { ...current.address, en: e.target.value } }))} />
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>LinkedIn</Label>
-                    <Input placeholder="https://linkedin.com/..." />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Telegram</Label>
-                    <Input placeholder="https://t.me/..." />
-                  </div>
-                </div>
-              </div>
 
-              <div className="pt-6">
-                <Button className="bg-[#1973AE] hover:bg-[#155a8a]">
-                  Сохранить изменения
-                </Button>
-              </div>
+                  <div className="space-y-4 pt-6 border-t">
+                    <h3 className="text-lg font-semibold text-gray-900">Social Links</h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Instagram</Label>
+                        <Input value={settingsForm.instagram || ''} onChange={(e) => setSettingsForm((current) => ({ ...current, instagram: e.target.value }))} placeholder="https://instagram.com/..." />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>LinkedIn</Label>
+                        <Input value={settingsForm.linkedin || ''} onChange={(e) => setSettingsForm((current) => ({ ...current, linkedin: e.target.value }))} placeholder="https://linkedin.com/..." />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Telegram</Label>
+                        <Input value={settingsForm.telegram || ''} onChange={(e) => setSettingsForm((current) => ({ ...current, telegram: e.target.value }))} placeholder="https://t.me/..." />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>WhatsApp</Label>
+                        <Input value={settingsForm.whatsapp || ''} onChange={(e) => setSettingsForm((current) => ({ ...current, whatsapp: e.target.value }))} placeholder="https://wa.me/..." />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-6">
+                    <Button className="bg-[#1973AE] hover:bg-[#155a8a]" disabled={isSavingSettings} onClick={() => void saveSettings()}>
+                      {isSavingSettings && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      Save changes
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           </TabsContent>
 

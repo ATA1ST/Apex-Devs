@@ -145,7 +145,9 @@ export async function downloadProtectedFile(url: string, fileName?: string) {
   link.click();
   link.remove();
 
-  window.URL.revokeObjectURL(blobUrl);
+  window.setTimeout(() => {
+    window.URL.revokeObjectURL(blobUrl);
+  }, 1000);
 }
 
 export function checkRateLimit(): { allowed: boolean; remainingTime?: number } {

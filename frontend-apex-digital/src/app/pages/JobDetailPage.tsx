@@ -1,5 +1,5 @@
-﻿import { useEffect, useState } from 'react';
-import { useNavigate, useParams, Link } from 'react-router';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate, Link } from 'react-router';
 import { ArrowLeft, MapPin, Briefcase, Clock, Upload, X, CheckCircle } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Badge } from '../components/ui/badge';
@@ -8,16 +8,50 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { OrbitalVisual } from '../components/OrbitalVisual';
-import { apiRequest, apiUrl, getApiErrorMessage, type ApiErrorPayload } from '../config/api';
-import type { JobDto as Job } from '../types/api';
 import { toast } from 'sonner';
+import { apiUrl } from '../config/api';
+
 
 type Language = 'ru' | 'kz' | 'en';
+
+interface LocalizedText {
+  ru: string;
+  kz: string;
+  en: string;
+}
+
+interface JobDescriptionLocale {
+  role: string;
+  tasks: string[];
+  requirements: string[];
+  plusPoints: string[];
+  conditions: string[];
+}
+
+interface Job {
+  id: string;
+  slug: string;
+  title: LocalizedText;
+  shortDescription: LocalizedText;
+  postedDate: string;
+  department: string;
+  location: string;
+  employmentType: string;
+  status: string;
+  isVisible: boolean;
+  description: {
+    ru: JobDescriptionLocale;
+    kz: JobDescriptionLocale;
+    en: JobDescriptionLocale;
+  };
+  stack: string[];
+}
 
 export function JobDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { language } = useLanguage();
+
   const currentLanguage = language as Language;
 
   const [job, setJob] = useState<Job | null>(null);
@@ -28,49 +62,53 @@ export function JobDetailPage() {
   const [submitted, setSubmitted] = useState(false);
 
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+
+  const [email, setEmail] = useState('');
   const [links, setLinks] = useState(['', '', '']);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    if (!slug) {
-      setIsLoading(false);
-      setJob(null);
-      return;
-    }
-
-    let cancelled = false;
-
     const loadJob = async () => {
+      if (!slug) return;
+
       try {
         setIsLoading(true);
         setLoadError('');
-        const result = await apiRequest<Job>(`/api/jobs/${slug}`, undefined, 'Job not found');
 
-        if (!cancelled) {
-          setJob(result);
+        const response = await fetch(apiUrl(`/api/jobs/${slug}`));
+
+        if (!response.ok) {
+          throw new Error(
+            currentLanguage === 'ru'
+              ? 'Вакансия не найдена'
+              : currentLanguage === 'kz'
+              ? 'Вакансия табылмады'
+              : 'Job not found'
+          );
         }
+
+        const data = await response.json();
+        setJob(data);
       } catch (error) {
-        if (!cancelled) {
-          setJob(null);
-          setLoadError(error instanceof Error ? error.message : 'Failed to load job');
-        }
+        setLoadError(
+          error instanceof Error
+            ? error.message
+            : currentLanguage === 'ru'
+            ? 'Ошибка загрузки вакансии'
+            : currentLanguage === 'kz'
+            ? 'Вакансияны жүктеу қатесі'
+            : 'Failed to load job'
+        );
       } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
+        setIsLoading(false);
       }
     };
 
-    void loadJob();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [slug]);
+    loadJob();
+  }, [slug, currentLanguage]);
 
   const getDepartmentLabel = (dept: string) => {
     const labels = {
@@ -86,7 +124,7 @@ export function JobDetailPage() {
   const getLocationLabel = (loc: string) => {
     const labels = {
       astana: { ru: 'Астана', kz: 'Астана', en: 'Astana' },
-      remote: { ru: 'Удаленно', kz: 'Қашықтан', en: 'Remote' },
+      remote: { ru: 'Удалённо', kz: 'Қашықтан', en: 'Remote' },
       hybrid: { ru: 'Гибрид', kz: 'Гибрид', en: 'Hybrid' },
     };
 
@@ -117,7 +155,9 @@ export function JobDetailPage() {
       return `${Math.floor(diffDays / 7)} ${currentLanguage === 'ru' ? 'нед. назад' : currentLanguage === 'kz' ? 'апта бұрын' : 'w ago'}`;
     }
 
-    return date.toLocaleDateString(currentLanguage === 'ru' ? 'ru-RU' : currentLanguage === 'kz' ? 'kk-KZ' : 'en-US');
+    return date.toLocaleDateString(
+      currentLanguage === 'ru' ? 'ru-RU' : currentLanguage === 'kz' ? 'kk-KZ' : 'en-US'
+    );
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -133,8 +173,8 @@ export function JobDetailPage() {
         currentLanguage === 'ru'
           ? 'Разрешены только файлы PDF, DOC, DOCX'
           : currentLanguage === 'kz'
-            ? 'Тек PDF, DOC, DOCX файлдарына рұқсат етіледі'
-            : 'Only PDF, DOC, DOCX files are allowed',
+          ? 'Тек PDF, DOC, DOCX файлдарына рұқсат етіледі'
+          : 'Only PDF, DOC, DOCX files are allowed'
       );
       e.target.value = '';
       return;
@@ -145,8 +185,8 @@ export function JobDetailPage() {
         currentLanguage === 'ru'
           ? 'Максимальный размер файла 10 MB'
           : currentLanguage === 'kz'
-            ? 'Файлдың максималды көлемі 10 MB'
-            : 'Maximum file size is 10 MB',
+          ? 'Файлдың максималды көлемі 10 MB'
+          : 'Maximum file size is 10 MB'
       );
       e.target.value = '';
       return;
@@ -162,16 +202,7 @@ export function JobDetailPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!job || !name.trim() || !email.trim() || !phone.trim() || !resumeFile) {
-      toast.error(
-        currentLanguage === 'ru'
-          ? 'Заполните обязательные поля'
-          : currentLanguage === 'kz'
-            ? 'Міндетті өрістерді толтырыңыз'
-            : 'Please fill in the required fields',
-      );
-      return;
-    }
+    if (!job || !name.trim() || !email.trim() || !phone.trim() || !resumeFile) return;
 
     try {
       setUploading(true);
@@ -192,23 +223,29 @@ export function JobDetailPage() {
         body: formData,
       });
 
-      const result = (await response.json().catch(() => null)) as ApiErrorPayload | { message?: string } | null;
-
       if (!response.ok) {
-        throw new Error(
-          getApiErrorMessage(
-            result as ApiErrorPayload | null,
-            currentLanguage === 'ru'
-              ? 'Ошибка при отправке отклика'
-              : currentLanguage === 'kz'
-                ? 'Өтінішті жіберу қатесі'
-                : 'Failed to submit application',
-          ),
-        );
+        let errorMessage =
+          currentLanguage === 'ru'
+            ? 'Ошибка при отправке отклика'
+            : currentLanguage === 'kz'
+            ? 'Өтінішті жіберу қатесі'
+            : 'Failed to submit application';
+
+        try {
+          const errorData = await response.json();
+          if (errorData?.message) {
+            errorMessage = errorData.message;
+          }
+        } catch {
+          //
+        }
+
+        throw new Error(errorMessage);
       }
 
       setSubmitted(true);
       setShowApplicationForm(false);
+
       setName('');
       setEmail('');
       setPhone('');
@@ -217,22 +254,21 @@ export function JobDetailPage() {
       setResumeFile(null);
 
       toast.success(
-        result?.message ||
-          (currentLanguage === 'ru'
-            ? 'Отклик успешно отправлен'
-            : currentLanguage === 'kz'
-              ? 'Өтініш сәтті жіберілді'
-              : 'Application submitted successfully'),
+        currentLanguage === 'ru'
+          ? 'Отклик успешно отправлен'
+          : currentLanguage === 'kz'
+          ? 'Өтініш сәтті жіберілді'
+          : 'Application submitted successfully'
       );
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
           : currentLanguage === 'ru'
-            ? 'Не удалось отправить отклик'
-            : currentLanguage === 'kz'
-              ? 'Өтінішті жіберу мүмкін болмады'
-              : 'Failed to submit application',
+          ? 'Не удалось отправить отклик'
+          : currentLanguage === 'kz'
+          ? 'Өтінішті жіберу мүмкін болмады'
+          : 'Failed to submit application'
       );
     } finally {
       setUploading(false);
@@ -260,8 +296,8 @@ export function JobDetailPage() {
               (currentLanguage === 'ru'
                 ? 'Вакансия не найдена'
                 : currentLanguage === 'kz'
-                  ? 'Вакансия табылмады'
-                  : 'Job not found')}
+                ? 'Вакансия табылмады'
+                : 'Job not found')}
           </h2>
           <Button onClick={() => navigate('/careers')}>
             {currentLanguage === 'ru' && 'Назад к вакансиям'}
@@ -309,7 +345,6 @@ export function JobDetailPage() {
                     {formatDate(job.postedDate)}
                   </span>
                 </div>
-
                 <div className="flex items-center gap-3">
                   <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                     {currentLanguage === 'ru' && 'Открыта'}
@@ -321,24 +356,6 @@ export function JobDetailPage() {
               </div>
             </div>
 
-            {submitted && (
-              <div className="bg-green-50 border border-green-200 rounded-xl p-6 flex items-start gap-4 mb-6">
-                <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0" />
-                <div>
-                  <h3 className="font-semibold text-green-900 mb-1">
-                    {currentLanguage === 'ru' && 'Отклик отправлен!'}
-                    {currentLanguage === 'kz' && 'Өтініш жіберілді!'}
-                    {currentLanguage === 'en' && 'Application submitted!'}
-                  </h3>
-                  <p className="text-green-700">
-                    {currentLanguage === 'ru' && 'Мы рассмотрим вашу заявку и свяжемся с вами в ближайшее время.'}
-                    {currentLanguage === 'kz' && 'Біз өтінішіңізді қарастырып, жақын арада хабарласамыз.'}
-                    {currentLanguage === 'en' && 'We will review your application and contact you soon.'}
-                  </p>
-                </div>
-              </div>
-            )}
-
             {!showApplicationForm && !submitted && (
               <Button
                 size="lg"
@@ -349,6 +366,24 @@ export function JobDetailPage() {
                 {currentLanguage === 'kz' && 'Үміткер болу'}
                 {currentLanguage === 'en' && 'Apply'}
               </Button>
+            )}
+
+            {submitted && (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-6 flex items-start gap-4">
+                <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0" />
+                <div>
+                  <h3 className="font-semibold text-green-900 mb-1">
+                    {currentLanguage === 'ru' && 'Отклик отправлен!'}
+                    {currentLanguage === 'kz' && 'Өтініш жіберілді!'}
+                    {currentLanguage === 'en' && 'Application submitted!'}
+                  </h3>
+                  <p className="text-green-700">
+                    {currentLanguage === 'ru' && 'Мы рассмотрим вашу заявку и свяжемся с вами в ближайшее время.'}
+                    {currentLanguage === 'kz' && 'Біз сіздің өтінішіңізді қарастырамыз және жақын арада хабарласамыз.'}
+                    {currentLanguage === 'en' && 'We will review your application and contact you soon.'}
+                  </p>
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -378,7 +413,21 @@ export function JobDetailPage() {
                       {currentLanguage === 'en' && 'Name'}
                       <span className="text-red-500 ml-1">*</span>
                     </Label>
-                    <Input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required className="w-full" />
+                    <Input
+                      id="name"
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder={
+                        currentLanguage === 'ru'
+                          ? 'Введите ваше имя'
+                          : currentLanguage === 'kz'
+                          ? 'Атыңызды енгізіңіз'
+                          : 'Enter your name'
+                      }
+                      required
+                      className="w-full"
+                    />
                   </div>
 
                   <div>
@@ -386,7 +435,21 @@ export function JobDetailPage() {
                       Email
                       <span className="text-red-500 ml-1">*</span>
                     </Label>
-                    <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full" />
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder={
+                        currentLanguage === 'ru'
+                          ? 'Введите ваш email'
+                          : currentLanguage === 'kz'
+                          ? 'Email енгізіңіз'
+                          : 'Enter your email'
+                      }
+                      required
+                      className="w-full"
+                    />
                   </div>
 
                   <div>
@@ -396,64 +459,129 @@ export function JobDetailPage() {
                       {currentLanguage === 'en' && 'Phone'}
                       <span className="text-red-500 ml-1">*</span>
                     </Label>
-                    <Input id="phone" type="text" value={phone} onChange={(e) => setPhone(e.target.value)} required className="w-full" />
+                    <Input
+                      id="phone"
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="+7 (___) ___-__-__"
+                      required
+                      className="w-full"
+                    />
                   </div>
 
-                  <div className="space-y-3">
-                    <Label className="text-gray-900 font-medium block">
+                  <div>
+                    <Label className="text-gray-900 font-medium mb-2 block">
                       {currentLanguage === 'ru' && 'Ссылки'}
                       {currentLanguage === 'kz' && 'Сілтемелер'}
                       {currentLanguage === 'en' && 'Links'}
                     </Label>
-                    {links.map((linkValue, index) => (
+
+                    <div className="space-y-3">
                       <Input
-                        key={index}
                         type="url"
-                        value={linkValue}
-                        onChange={(e) => {
-                          const next = [...links];
-                          next[index] = e.target.value;
-                          setLinks(next);
-                        }}
-                        placeholder={currentLanguage === 'en' ? `Portfolio link ${index + 1}` : `Ссылка ${index + 1}`}
+                        value={links[0]}
+                        onChange={(e) => setLinks((prev) => [e.target.value, prev[1], prev[2]])}
+                        placeholder="GitHub / Portfolio / LinkedIn"
                         className="w-full"
                       />
-                    ))}
+                      <Input
+                        type="url"
+                        value={links[1]}
+                        onChange={(e) => setLinks((prev) => [prev[0], e.target.value, prev[2]])}
+                        placeholder={
+                          currentLanguage === 'ru'
+                            ? 'Дополнительная ссылка'
+                            : currentLanguage === 'kz'
+                            ? 'Қосымша сілтеме'
+                            : 'Additional link'
+                        }
+                        className="w-full"
+                      />
+                      <Input
+                        type="url"
+                        value={links[2]}
+                        onChange={(e) => setLinks((prev) => [prev[0], prev[1], e.target.value])}
+                        placeholder={
+                          currentLanguage === 'ru'
+                            ? 'Дополнительная ссылка'
+                            : currentLanguage === 'kz'
+                            ? 'Қосымша сілтеме'
+                            : 'Additional link'
+                        }
+                        className="w-full"
+                      />
+                    </div>
                   </div>
 
                   <div>
                     <Label htmlFor="message" className="text-gray-900 font-medium mb-2 block">
-                      {currentLanguage === 'ru' && 'Сообщение'}
-                      {currentLanguage === 'kz' && 'Хабарлама'}
-                      {currentLanguage === 'en' && 'Message'}
+                      {currentLanguage === 'ru' && 'Сопроводительное письмо'}
+                      {currentLanguage === 'kz' && 'Ілеспе хат'}
+                      {currentLanguage === 'en' && 'Cover Letter'}
                     </Label>
-                    <Textarea id="message" value={message} onChange={(e) => setMessage(e.target.value)} rows={4} className="w-full" />
+                    <Textarea
+                      id="message"
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      placeholder={
+                        currentLanguage === 'ru'
+                          ? 'Кратко расскажите о себе, опыте и почему хотите откликнуться'
+                          : currentLanguage === 'kz'
+                          ? 'Өзіңіз, тәжірибеңіз және неге осы вакансияға қызыққаныңыз туралы қысқаша жазыңыз'
+                          : 'Briefly tell us about yourself, your experience, and why you are applying'
+                      }
+                      rows={5}
+                      className="w-full resize-none"
+                    />
                   </div>
 
                   <div>
-                    <Label htmlFor="resume" className="text-gray-900 font-medium mb-2 block">
-                      Resume / CV
+                    <Label className="text-gray-900 font-medium mb-2 block">
+                      {currentLanguage === 'ru' && 'Резюме'}
+                      {currentLanguage === 'kz' && 'Резюме'}
+                      {currentLanguage === 'en' && 'Resume'}
                       <span className="text-red-500 ml-1">*</span>
                     </Label>
 
                     {!resumeFile ? (
-                      <label
-                        htmlFor="resume"
-                        className="border-2 border-dashed border-gray-300 rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer hover:border-[#1973AE] transition-colors"
-                      >
-                        <Upload className="w-8 h-8 text-gray-400 mb-3" />
-                        <span className="text-gray-700">
-                          {currentLanguage === 'ru' && 'Загрузить резюме'}
-                          {currentLanguage === 'kz' && 'Резюме жүктеу'}
-                          {currentLanguage === 'en' && 'Upload resume'}
-                        </span>
-                        <input id="resume" type="file" className="hidden" onChange={handleFileChange} accept=".pdf,.doc,.docx" />
+                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-[#1973AE] transition-colors bg-gray-50 hover:bg-gray-100">
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                          <Upload className="w-8 h-8 mb-2 text-gray-500" />
+                          <p className="text-sm text-gray-600">
+                            {currentLanguage === 'ru' && 'Нажмите для загрузки'}
+                            {currentLanguage === 'kz' && 'Жүктеу үшін басыңыз'}
+                            {currentLanguage === 'en' && 'Click to upload'}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">PDF, DOC, DOCX (max 10MB)</p>
+                        </div>
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept=".pdf,.doc,.docx"
+                          onChange={handleFileChange}
+                          required
+                        />
                       </label>
                     ) : (
-                      <div className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
-                        <div>
-                          <p className="font-medium text-gray-900">{resumeFile.name}</p>
-                          <p className="text-sm text-gray-500">{(resumeFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                      <div className="flex items-center justify-between bg-gray-50 rounded-xl p-4 border border-gray-200">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-[#1973AE]/10 flex items-center justify-center">
+                            <svg className="w-6 h-6 text-[#1973AE]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                              />
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">{resumeFile.name}</p>
+                            <p className="text-sm text-gray-500">
+                              {(resumeFile.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
+                          </div>
                         </div>
                         <Button type="button" variant="ghost" size="sm" onClick={handleRemoveFile}>
                           <X className="w-5 h-5" />
@@ -465,20 +593,22 @@ export function JobDetailPage() {
                   <div className="flex gap-3 pt-4">
                     <Button
                       type="submit"
-                      disabled={!name.trim() || !email.trim() || !phone.trim() || !resumeFile || uploading}
+                      disabled={!name || !email || !phone || !resumeFile || uploading}
                       className="flex-1 bg-[#1973AE] text-white hover:bg-[#39D2ED]"
                     >
-                      {uploading
-                        ? currentLanguage === 'ru'
-                          ? 'Отправка...'
-                          : currentLanguage === 'kz'
-                            ? 'Жіберілуде...'
-                            : 'Submitting...'
-                        : currentLanguage === 'ru'
-                          ? 'Отправить'
-                          : currentLanguage === 'kz'
-                            ? 'Жіберу'
-                            : 'Submit'}
+                      {uploading ? (
+                        <>
+                          {currentLanguage === 'ru' && 'Отправка...'}
+                          {currentLanguage === 'kz' && 'Жіберілуде...'}
+                          {currentLanguage === 'en' && 'Submitting...'}
+                        </>
+                      ) : (
+                        <>
+                          {currentLanguage === 'ru' && 'Отправить'}
+                          {currentLanguage === 'kz' && 'Жіберу'}
+                          {currentLanguage === 'en' && 'Submit'}
+                        </>
+                      )}
                     </Button>
                     <Button type="button" variant="outline" onClick={() => setShowApplicationForm(false)}>
                       {currentLanguage === 'ru' && 'Отмена'}
@@ -606,7 +736,11 @@ export function JobDetailPage() {
                   {currentLanguage === 'kz' && 'Өтініш жіберіңіз және біз сізбен хабарласамыз'}
                   {currentLanguage === 'en' && "Submit your application and we'll contact you"}
                 </p>
-                <Button size="lg" onClick={() => setShowApplicationForm(true)} className="bg-white text-[#1973AE] hover:bg-gray-100">
+                <Button
+                  size="lg"
+                  onClick={() => setShowApplicationForm(true)}
+                  className="bg-white text-[#1973AE] hover:bg-gray-100"
+                >
                   {currentLanguage === 'ru' && 'Откликнуться'}
                   {currentLanguage === 'kz' && 'Үміткер болу'}
                   {currentLanguage === 'en' && 'Apply Now'}

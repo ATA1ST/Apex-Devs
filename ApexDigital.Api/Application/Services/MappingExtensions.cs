@@ -68,7 +68,7 @@ public static class MappingExtensions
         Timeline = sr.Timeline, Description = sr.Description,
         Attachments = sr.Attachments.Select(a => new AttachmentInfoDto(a.Name, a.Size, $"{baseUrl}/api/files/requests/{a.StoredFileName}")).ToList(),
         Status = sr.Status, Processed = sr.Processed, AdminNote = sr.AdminNote,
-        CreatedAt = sr.CreatedAt.ToString("yyyy-MM-dd"),
+        CreatedAt = sr.CreatedAt.ToString("o"),
     };
 
     // ===== JobApplication =====

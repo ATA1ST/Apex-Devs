@@ -95,6 +95,55 @@ public class AdminController : ControllerBase
         return Ok(new { message = "Статус обновлён" });
     }
 
+    [HttpDelete("service-requests/{id}")]
+    public async Task<IActionResult> DeleteServiceRequest(string id)
+    {
+        var existing = await _db.ServiceRequests.Find(s => s.Id == id).FirstOrDefaultAsync();
+        if (existing == null) return NotFound(new ApiError("Service request not found"));
+
+        foreach (var attachment in existing.Attachments)
+        {
+            if (!string.IsNullOrWhiteSpace(attachment.StoredFileName))
+                await _files.DeleteAsync(attachment.StoredFileName, "requests");
+        }
+
+        var result = await _db.ServiceRequests.DeleteOneAsync(s => s.Id == id);
+        if (result.DeletedCount == 0) return NotFound(new ApiError("Service request not found"));
+
+        await _audit.LogAsync("delete", "ServiceRequest", id, AdminLogin);
+        return Ok(new { message = "Deleted" });
+    }
+
+    [HttpGet("settings")]
+    public async Task<IActionResult> GetSettings()
+    {
+        var settings = await _db.SiteSettings.Find(_ => true).FirstOrDefaultAsync();
+        return Ok((settings ?? new SiteSettings()).ToDto());
+    }
+
+    [HttpPut("settings")]
+    public async Task<IActionResult> UpdateSettings([FromBody] SiteSettingsDto dto)
+    {
+        var settings = await _db.SiteSettings.Find(_ => true).FirstOrDefaultAsync() ?? new SiteSettings();
+
+        settings.Phone = dto.Phone.Trim();
+        settings.Email = dto.Email.Trim();
+        settings.Address = dto.Address.ToEntity();
+        settings.Instagram = string.IsNullOrWhiteSpace(dto.Instagram) ? null : dto.Instagram.Trim();
+        settings.Linkedin = string.IsNullOrWhiteSpace(dto.Linkedin) ? null : dto.Linkedin.Trim();
+        settings.Telegram = string.IsNullOrWhiteSpace(dto.Telegram) ? null : dto.Telegram.Trim();
+        settings.Whatsapp = string.IsNullOrWhiteSpace(dto.Whatsapp) ? null : dto.Whatsapp.Trim();
+        settings.UpdatedAt = DateTime.UtcNow;
+
+        if (string.IsNullOrWhiteSpace(settings.Id))
+            await _db.SiteSettings.InsertOneAsync(settings);
+        else
+            await _db.SiteSettings.ReplaceOneAsync(s => s.Id == settings.Id, settings);
+
+        await _audit.LogAsync("update", "SiteSettings", settings.Id, AdminLogin);
+        return Ok(settings.ToDto());
+    }
+
     // ========== PROJECTS ==========
 
     [HttpGet("projects")]
@@ -333,32 +382,6 @@ public class AdminController : ControllerBase
 
         await _audit.LogAsync("delete", "JobApplication", id, AdminLogin);
         return Ok(new { message = "Удалено" });
-    }
-
-    // ========== SITE SETTINGS ==========
-
-    [HttpPut("settings")]
-    public async Task<IActionResult> UpdateSettings([FromBody] SiteSettingsDto dto)
-    {
-        var existing = await _db.SiteSettings.Find(_ => true).FirstOrDefaultAsync();
-        if (existing == null)
-        {
-            existing = new SiteSettings();
-            await _db.SiteSettings.InsertOneAsync(existing);
-        }
-
-        existing.Phone = dto.Phone;
-        existing.Email = dto.Email;
-        existing.Address = dto.Address.ToEntity();
-        existing.Instagram = dto.Instagram;
-        existing.Linkedin = dto.Linkedin;
-        existing.Telegram = dto.Telegram;
-        existing.Whatsapp = dto.Whatsapp;
-        existing.UpdatedAt = DateTime.UtcNow;
-
-        await _db.SiteSettings.ReplaceOneAsync(s => s.Id == existing.Id, existing);
-        await _audit.LogAsync("update", "SiteSettings", existing.Id, AdminLogin);
-        return Ok(existing.ToDto());
     }
 
     // ========== HELPERS ==========

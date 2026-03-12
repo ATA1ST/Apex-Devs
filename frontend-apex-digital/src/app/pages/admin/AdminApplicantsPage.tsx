@@ -89,8 +89,22 @@ export function AdminApplicantsPage() {
     return status;
   };
 
+  const handleResumeDownload = async (resumeUrl: string, fileName: string) => {
+    try {
+      await downloadProtectedFile(resumeUrl, fileName);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to download resume');
+    }
+  };
+
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ru-RU', {
+    const date = new Date(dateString);
+
+    if (Number.isNaN(date.getTime())) {
+      return '?';
+    }
+
+    return date.toLocaleString('ru-RU', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -188,7 +202,7 @@ export function AdminApplicantsPage() {
                           <Eye className="h-4 w-4" />
                         </Button>
                         {applicant.resumeFile && (
-                          <Button size="sm" variant="outline" onClick={() => void downloadProtectedFile(applicant.resumeFile!.url, applicant.resumeFile!.name)}>
+                          <Button size="sm" variant="outline" onClick={() => void handleResumeDownload(applicant.resumeFile!.url, applicant.resumeFile!.name)}>
                             <Download className="h-4 w-4" />
                           </Button>
                         )}
@@ -256,7 +270,7 @@ export function AdminApplicantsPage() {
                   <Label className="text-sm text-gray-500">Резюме</Label>
                   <div className="mt-1 flex items-center gap-2">
                     <span className="text-gray-700">{selectedApplicant.resumeFile.name}</span>
-                    <Button size="sm" variant="outline" onClick={() => void downloadProtectedFile(selectedApplicant.resumeFile!.url, selectedApplicant.resumeFile!.name)}>
+                    <Button size="sm" variant="outline" onClick={() => void handleResumeDownload(selectedApplicant.resumeFile!.url, selectedApplicant.resumeFile!.name)}>
                       <Download className="h-4 w-4 mr-1" />
                       Скачать
                     </Button>
