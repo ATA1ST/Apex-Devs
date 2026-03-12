@@ -5,7 +5,7 @@ import {
   FolderOpen,
   MessageSquare,
   Settings,
-  Image as ImageIcon,
+  Briefcase,
   Plus,
   Edit,
   Trash2,
@@ -14,7 +14,6 @@ import {
   Check,
   X,
   Upload,
-  Link as LinkIcon,
   Paperclip,
   Loader2
 } from 'lucide-react';
@@ -30,12 +29,10 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription
 } from '../components/ui/dialog';
 import { clearSession, authFetch, downloadProtectedFile } from '../config/auth';
 import { toast } from 'sonner';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-
+import { VacanciesManagement } from './admin/VacanciesManagement';
 
 interface AttachmentInfoDto {
   name: string;
@@ -58,13 +55,6 @@ interface Submission {
   processed: boolean;
   adminNote?: string | null;
   createdAt: string;
-}
-
-interface PaginatedResult<T> {
-  items: T[];
-  total: number;
-  page: number;
-  pageSize: number;
 }
 
 interface LocalizedStringDto {
@@ -196,23 +186,16 @@ export function AdminPanel() {
       const response = await authFetch('/api/admin/service-requests?page=1&pageSize=100');
       const raw = await response.text();
 
-      console.log('service-requests status:', response.status);
-      console.log('service-requests raw:', raw);
-
       if (!response.ok) {
         throw new Error(raw || 'Не удалось загрузить заявки');
       }
 
       const result = raw ? JSON.parse(raw) : null;
-      console.log('service-requests parsed:', result);
-
       const items = Array.isArray(result?.items) ? result.items : [];
       setSubmissions(items);
     } catch (error) {
-      console.error('loadSubmissions error:', error);
-
       const message =
-          error instanceof Error ? error.message : 'Не удалось загрузить заявки';
+        error instanceof Error ? error.message : 'Не удалось загрузить заявки';
 
       toast.error(message);
 
@@ -244,9 +227,9 @@ export function AdminPanel() {
       }
 
       setProjects((prev) =>
-          prev.map((p) =>
-              p.id === projectId ? { ...p, isVisible: !!result?.isVisible } : p
-          )
+        prev.map((p) =>
+          p.id === projectId ? { ...p, isVisible: !!result?.isVisible } : p
+        )
       );
 
       toast.success(result?.isVisible ? 'Проект теперь видим' : 'Проект скрыт');
@@ -306,11 +289,11 @@ export function AdminPanel() {
       }
 
       setSubmissions((prev) =>
-          prev.map((s) =>
-              s.id === submissionId
-                  ? { ...s, status: nextStatus as 'new' | 'processed', processed: nextStatus === 'processed' }
-                  : s
-          )
+        prev.map((s) =>
+          s.id === submissionId
+            ? { ...s, status: nextStatus as 'new' | 'processed', processed: nextStatus === 'processed' }
+            : s
+        )
       );
 
       toast.success('Статус заявки обновлён');
@@ -323,7 +306,7 @@ export function AdminPanel() {
 
   const deleteSubmission = (submissionId: string) => {
     if (confirm('Удалить эту заявку?')) {
-      setSubmissions(submissions.filter(s => s.id !== submissionId));
+      setSubmissions(submissions.filter((s) => s.id !== submissionId));
       toast.success('Заявка удалена');
     }
   };
@@ -388,15 +371,15 @@ export function AdminPanel() {
       category: projectForm.category.trim(),
       status: 'progress',
       tags: projectForm.tags
-          .split(',')
-          .map((t) => t.trim())
-          .filter(Boolean),
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean),
       image: '',
       gallery: [],
       stack: projectForm.tags
-          .split(',')
-          .map((t) => t.trim())
-          .filter(Boolean),
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean),
       isVisible: true,
     };
 
@@ -404,13 +387,13 @@ export function AdminPanel() {
       setSavingProject(true);
 
       const response = await authFetch(
-          editingProject
-              ? `/api/admin/projects/${editingProject}`
-              : '/api/admin/projects',
-          {
-            method: editingProject ? 'PUT' : 'POST',
-            body: JSON.stringify(payload),
-          }
+        editingProject
+          ? `/api/admin/projects/${editingProject}`
+          : '/api/admin/projects',
+        {
+          method: editingProject ? 'PUT' : 'POST',
+          body: JSON.stringify(payload),
+        }
       );
 
       const result = await response.json().catch(() => null);
@@ -421,7 +404,7 @@ export function AdminPanel() {
 
       if (editingProject) {
         setProjects((prev) =>
-            prev.map((p) => (p.id === editingProject ? result : p))
+          prev.map((p) => (p.id === editingProject ? result : p))
         );
         toast.success('Проект успешно обновлён');
       } else {
@@ -447,6 +430,14 @@ export function AdminPanel() {
     }
   };
 
+  const openAttachment = async (file: AttachmentInfoDto) => {
+    try {
+      await downloadProtectedFile(file.url, file.name);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Не удалось открыть файл');
+    }
+  };
+
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString);
     return new Intl.DateTimeFormat('ru-RU', {
@@ -460,7 +451,6 @@ export function AdminPanel() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <header className="bg-white border-b sticky top-0 z-10">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
@@ -484,7 +474,6 @@ export function AdminPanel() {
         </div>
       </header>
 
-      {/* Main Content */}
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs defaultValue="submissions" className="space-y-6">
           <TabsList className="grid w-full max-w-2xl grid-cols-4">
@@ -495,9 +484,9 @@ export function AdminPanel() {
             <TabsTrigger value="submissions">
               <MessageSquare className="w-4 h-4 mr-2" />
               Заявки
-              {submissions.filter(s => s.status === 'new').length > 0 && (
+              {submissions.filter((s) => s.status === 'new').length > 0 && (
                 <Badge variant="destructive" className="ml-2">
-                  {submissions.filter(s => s.status === 'new').length}
+                  {submissions.filter((s) => s.status === 'new').length}
                 </Badge>
               )}
             </TabsTrigger>
@@ -505,13 +494,12 @@ export function AdminPanel() {
               <Settings className="w-4 h-4 mr-2" />
               Настройки
             </TabsTrigger>
-            <TabsTrigger value="media">
-              <ImageIcon className="w-4 h-4 mr-2" />
-              Медиа
+            <TabsTrigger value="vacancies">
+              <Briefcase className="w-4 h-4 mr-2" />
+              Вакансии
             </TabsTrigger>
           </TabsList>
 
-          {/* Projects Tab */}
           <TabsContent value="projects" className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
@@ -521,23 +509,23 @@ export function AdminPanel() {
               <Dialog open={isProjectDialogOpen} onOpenChange={setIsProjectDialogOpen}>
                 <DialogTrigger asChild>
                   <Button
-                      onClick={() => {
-                        setEditingProject(null);
-                        setProjectForm({
-                          titleRu: '',
-                          titleKz: '',
-                          titleEn: '',
-                          descriptionRu: '',
-                          descriptionKz: '',
-                          descriptionEn: '',
-                          category: '',
-                          tags: '',
-                          images: [],
-                          demoUrl: '',
-                          githubUrl: '',
-                        });
-                      }}
-                      className="bg-[#1973AE] hover:bg-[#155a8a]"
+                    onClick={() => {
+                      setEditingProject(null);
+                      setProjectForm({
+                        titleRu: '',
+                        titleKz: '',
+                        titleEn: '',
+                        descriptionRu: '',
+                        descriptionKz: '',
+                        descriptionEn: '',
+                        category: '',
+                        tags: '',
+                        images: [],
+                        demoUrl: '',
+                        githubUrl: '',
+                      });
+                    }}
+                    className="bg-[#1973AE] hover:bg-[#155a8a]"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Добавить проект
@@ -563,27 +551,27 @@ export function AdminPanel() {
                         <div>
                           <Label htmlFor="titleRu">Название проекта *</Label>
                           <Input
-                              id="titleRu"
-                              value={projectForm.titleRu}
-                              onChange={(e) =>
-                                  setProjectForm({ ...projectForm, titleRu: e.target.value })
-                              }
-                              placeholder="Введите название проекта"
+                            id="titleRu"
+                            value={projectForm.titleRu}
+                            onChange={(e) =>
+                              setProjectForm({ ...projectForm, titleRu: e.target.value })
+                            }
+                            placeholder="Введите название проекта"
                           />
                         </div>
                         <div>
                           <Label htmlFor="descriptionRu">Описание проекта *</Label>
                           <Textarea
-                              id="descriptionRu"
-                              value={projectForm.descriptionRu}
-                              onChange={(e) =>
-                                  setProjectForm({
-                                    ...projectForm,
-                                    descriptionRu: e.target.value,
-                                  })
-                              }
-                              placeholder="Краткое описание проекта"
-                              rows={4}
+                            id="descriptionRu"
+                            value={projectForm.descriptionRu}
+                            onChange={(e) =>
+                              setProjectForm({
+                                ...projectForm,
+                                descriptionRu: e.target.value,
+                              })
+                            }
+                            placeholder="Краткое описание проекта"
+                            rows={4}
                           />
                         </div>
                       </TabsContent>
@@ -592,27 +580,27 @@ export function AdminPanel() {
                         <div>
                           <Label htmlFor="titleKz">Жоба атауы</Label>
                           <Input
-                              id="titleKz"
-                              value={projectForm.titleKz}
-                              onChange={(e) =>
-                                  setProjectForm({ ...projectForm, titleKz: e.target.value })
-                              }
-                              placeholder="Жоба атауын енгізіңіз"
+                            id="titleKz"
+                            value={projectForm.titleKz}
+                            onChange={(e) =>
+                              setProjectForm({ ...projectForm, titleKz: e.target.value })
+                            }
+                            placeholder="Жоба атауын енгізіңіз"
                           />
                         </div>
                         <div>
                           <Label htmlFor="descriptionKz">Жоба сипаттамасы</Label>
                           <Textarea
-                              id="descriptionKz"
-                              value={projectForm.descriptionKz}
-                              onChange={(e) =>
-                                  setProjectForm({
-                                    ...projectForm,
-                                    descriptionKz: e.target.value,
-                                  })
-                              }
-                              placeholder="Жобаның қысқаша сипаттамасы"
-                              rows={4}
+                            id="descriptionKz"
+                            value={projectForm.descriptionKz}
+                            onChange={(e) =>
+                              setProjectForm({
+                                ...projectForm,
+                                descriptionKz: e.target.value,
+                              })
+                            }
+                            placeholder="Жобаның қысқаша сипаттамасы"
+                            rows={4}
                           />
                         </div>
                       </TabsContent>
@@ -621,27 +609,27 @@ export function AdminPanel() {
                         <div>
                           <Label htmlFor="titleEn">Project Title</Label>
                           <Input
-                              id="titleEn"
-                              value={projectForm.titleEn}
-                              onChange={(e) =>
-                                  setProjectForm({ ...projectForm, titleEn: e.target.value })
-                              }
-                              placeholder="Enter project title"
+                            id="titleEn"
+                            value={projectForm.titleEn}
+                            onChange={(e) =>
+                              setProjectForm({ ...projectForm, titleEn: e.target.value })
+                            }
+                            placeholder="Enter project title"
                           />
                         </div>
                         <div>
                           <Label htmlFor="descriptionEn">Project Description</Label>
                           <Textarea
-                              id="descriptionEn"
-                              value={projectForm.descriptionEn}
-                              onChange={(e) =>
-                                  setProjectForm({
-                                    ...projectForm,
-                                    descriptionEn: e.target.value,
-                                  })
-                              }
-                              placeholder="Brief project description"
-                              rows={4}
+                            id="descriptionEn"
+                            value={projectForm.descriptionEn}
+                            onChange={(e) =>
+                              setProjectForm({
+                                ...projectForm,
+                                descriptionEn: e.target.value,
+                              })
+                            }
+                            placeholder="Brief project description"
+                            rows={4}
                           />
                         </div>
                       </TabsContent>
@@ -651,24 +639,24 @@ export function AdminPanel() {
                       <div>
                         <Label htmlFor="category">Категория *</Label>
                         <Input
-                            id="category"
-                            value={projectForm.category}
-                            onChange={(e) =>
-                                setProjectForm({ ...projectForm, category: e.target.value })
-                            }
-                            placeholder="например: Web Development"
+                          id="category"
+                          value={projectForm.category}
+                          onChange={(e) =>
+                            setProjectForm({ ...projectForm, category: e.target.value })
+                          }
+                          placeholder="например: Web Development"
                         />
                       </div>
 
                       <div>
                         <Label htmlFor="tags">Теги</Label>
                         <Input
-                            id="tags"
-                            value={projectForm.tags}
-                            onChange={(e) =>
-                                setProjectForm({ ...projectForm, tags: e.target.value })
-                            }
-                            placeholder="React, TypeScript, Node.js"
+                          id="tags"
+                          value={projectForm.tags}
+                          onChange={(e) =>
+                            setProjectForm({ ...projectForm, tags: e.target.value })
+                          }
+                          placeholder="React, TypeScript, Node.js"
                         />
                       </div>
                     </div>
@@ -676,11 +664,11 @@ export function AdminPanel() {
                     <div>
                       <Label htmlFor="images">Изображения проекта</Label>
                       <Input
-                          id="images"
-                          type="file"
-                          multiple
-                          accept="image/*"
-                          onChange={handleImageUpload}
+                        id="images"
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={handleImageUpload}
                       />
                       <p className="text-sm text-gray-500 mt-1">
                         Пока UI принимает файлы, но бэк проектов работает через JSON. Эти файлы сейчас не отправляются в API.
@@ -691,42 +679,42 @@ export function AdminPanel() {
                       <div>
                         <Label htmlFor="demoUrl">Demo URL</Label>
                         <Input
-                            id="demoUrl"
-                            value={projectForm.demoUrl}
-                            onChange={(e) =>
-                                setProjectForm({ ...projectForm, demoUrl: e.target.value })
-                            }
-                            placeholder="https://demo.example.com"
+                          id="demoUrl"
+                          value={projectForm.demoUrl}
+                          onChange={(e) =>
+                            setProjectForm({ ...projectForm, demoUrl: e.target.value })
+                          }
+                          placeholder="https://demo.example.com"
                         />
                       </div>
 
                       <div>
                         <Label htmlFor="githubUrl">GitHub URL</Label>
                         <Input
-                            id="githubUrl"
-                            value={projectForm.githubUrl}
-                            onChange={(e) =>
-                                setProjectForm({ ...projectForm, githubUrl: e.target.value })
-                            }
-                            placeholder="https://github.com/example"
+                          id="githubUrl"
+                          value={projectForm.githubUrl}
+                          onChange={(e) =>
+                            setProjectForm({ ...projectForm, githubUrl: e.target.value })
+                          }
+                          placeholder="https://github.com/example"
                         />
                       </div>
                     </div>
 
                     <div className="flex justify-end space-x-2">
                       <Button
-                          variant="outline"
-                          onClick={() => {
-                            setIsProjectDialogOpen(false);
-                            setEditingProject(null);
-                          }}
+                        variant="outline"
+                        onClick={() => {
+                          setIsProjectDialogOpen(false);
+                          setEditingProject(null);
+                        }}
                       >
                         Отмена
                       </Button>
                       <Button
-                          onClick={handleSaveProject}
-                          disabled={savingProject}
-                          className="bg-[#1973AE] hover:bg-[#155a8a]"
+                        onClick={handleSaveProject}
+                        disabled={savingProject}
+                        className="bg-[#1973AE] hover:bg-[#155a8a]"
                       >
                         {savingProject ? 'Сохранение...' : 'Сохранить'}
                       </Button>
@@ -737,93 +725,92 @@ export function AdminPanel() {
             </div>
 
             {isLoadingProjects ? (
-                <div className="bg-white rounded-lg border p-10 text-center text-gray-500">
-                  Загрузка проектов...
-                </div>
+              <div className="bg-white rounded-lg border p-10 text-center text-gray-500">
+                Загрузка проектов...
+              </div>
             ) : projects.length === 0 ? (
-                <div className="bg-white rounded-lg border p-10 text-center text-gray-500">
-                  Проектов пока нет
-                </div>
+              <div className="bg-white rounded-lg border p-10 text-center text-gray-500">
+                Проектов пока нет
+              </div>
             ) : (
-                <div className="grid gap-4">
-                  {projects.map((project) => (
-                      <div
-                          key={project.id}
-                          className="bg-white rounded-lg border p-6 hover:shadow-md transition-shadow"
-                      >
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-3 mb-2">
-                              <h3 className="text-lg font-semibold text-gray-900">
-                                {project.title.ru}
-                              </h3>
+              <div className="grid gap-4">
+                {projects.map((project) => (
+                  <div
+                    key={project.id}
+                    className="bg-white rounded-lg border p-6 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {project.title.ru}
+                          </h3>
 
-                              <Badge variant={project.status === 'progress' ? 'secondary' : 'default'}>
-                                {project.status === 'progress'
-                                    ? 'В разработке'
-                                    : project.status === 'done'
-                                        ? 'Завершено'
-                                        : project.status === 'discovery'
-                                            ? 'Исследование'
-                                            : project.status}
-                              </Badge>
+                          <Badge variant={project.status === 'progress' ? 'secondary' : 'default'}>
+                            {project.status === 'progress'
+                              ? 'В разработке'
+                              : project.status === 'done'
+                              ? 'Завершено'
+                              : project.status === 'discovery'
+                              ? 'Исследование'
+                              : project.status}
+                          </Badge>
 
-                              {!project.isVisible && <Badge variant="outline">Скрыт</Badge>}
-                            </div>
+                          {!project.isVisible && <Badge variant="outline">Скрыт</Badge>}
+                        </div>
 
-                            <p className="text-sm text-gray-600 mb-3">{project.description.ru}</p>
+                        <p className="text-sm text-gray-600 mb-3">{project.description.ru}</p>
 
-                            <div className="flex flex-wrap gap-2">
-                              {project.tags.map((tag, idx) => (
-                                  <span
-                                      key={idx}
-                                      className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
-                                  >
-                    {tag}
-                  </span>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center space-x-2 ml-4">
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={projectActionId === project.id}
-                                onClick={() => toggleProjectPublish(project.id)}
+                        <div className="flex flex-wrap gap-2">
+                          {project.tags.map((tag, idx) => (
+                            <span
+                              key={idx}
+                              className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
                             >
-                              {project.isVisible ? (
-                                  <Eye className="w-4 h-4" />
-                              ) : (
-                                  <EyeOff className="w-4 h-4" />
-                              )}
-                            </Button>
-
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleEditProject(project.id)}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-
-                            <Button
-                                size="sm"
-                                variant="destructive"
-                                disabled={projectActionId === project.id}
-                                onClick={() => deleteProject(project.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
+                              {tag}
+                            </span>
+                          ))}
                         </div>
                       </div>
-                  ))}
-                </div>
+
+                      <div className="flex items-center space-x-2 ml-4">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={projectActionId === project.id}
+                          onClick={() => toggleProjectPublish(project.id)}
+                        >
+                          {project.isVisible ? (
+                            <Eye className="w-4 h-4" />
+                          ) : (
+                            <EyeOff className="w-4 h-4" />
+                          )}
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEditProject(project.id)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          disabled={projectActionId === project.id}
+                          onClick={() => deleteProject(project.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </TabsContent>
 
-          {/* Submissions Tab */}
           <TabsContent value="submissions" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold text-gray-900">Заявки клиентов</h2>
@@ -842,135 +829,134 @@ export function AdminPanel() {
             </div>
 
             {isLoadingSubmissions ? (
-                <div className="bg-white rounded-lg border p-10 text-center text-gray-500">
-                  Загрузка заявок...
-                </div>
+              <div className="bg-white rounded-lg border p-10 text-center text-gray-500">
+                Загрузка заявок...
+              </div>
             ) : submissions.length === 0 ? (
-                <div className="bg-white rounded-lg border p-10 text-center text-gray-500">
-                  Заявок пока нет
-                </div>
+              <div className="bg-white rounded-lg border p-10 text-center text-gray-500">
+                Заявок пока нет
+              </div>
             ) : (
-                <div className="grid gap-4">
-                  {submissions.map((submission) => (
-                      <div
-                          key={submission.id}
-                          className={`bg-white rounded-lg border p-6 ${
-                              submission.status === 'new' ? 'border-l-4 border-l-[#39D2ED]' : ''
-                          }`}
-                      >
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <h3 className="text-lg font-semibold text-gray-900">{submission.name}</h3>
-                            <p className="text-sm text-gray-600">{submission.company || 'Без компании'}</p>
-                          </div>
-                          <Badge variant={submission.status === 'new' ? 'destructive' : 'secondary'}>
-                            {submission.status === 'new' ? 'Новая' : 'Обработано'}
-                          </Badge>
+              <div className="grid gap-4">
+                {submissions.map((submission) => (
+                  <div
+                    key={submission.id}
+                    className={`bg-white rounded-lg border p-6 ${
+                      submission.status === 'new' ? 'border-l-4 border-l-[#39D2ED]' : ''
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">{submission.name}</h3>
+                        <p className="text-sm text-gray-600">{submission.company || 'Без компании'}</p>
+                      </div>
+                      <Badge variant={submission.status === 'new' ? 'destructive' : 'secondary'}>
+                        {submission.status === 'new' ? 'Новая' : 'Обработано'}
+                      </Badge>
+                    </div>
+
+                    <div className="space-y-2 mb-4">
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-500">Email:</span>
+                          <p className="text-gray-900">{submission.email || '—'}</p>
                         </div>
-
-                        <div className="space-y-2 mb-4">
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <span className="text-gray-500">Email:</span>
-                              <p className="text-gray-900">{submission.email || '—'}</p>
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Телефон:</span>
-                              <p className="text-gray-900">{submission.phone || '—'}</p>
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Услуга:</span>
-                              <p className="text-gray-900">{getLabel(submission.service, serviceLabelMap)}</p>
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Бюджет:</span>
-                              <p className="text-gray-900">{getLabel(submission.budget, budgetLabelMap)}</p>
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Срок:</span>
-                              <p className="text-gray-900">{getLabel(submission.timeline, timelineLabelMap)}</p>
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Дата:</span>
-                              <p className="text-gray-900">{formatDateTime(submission.createdAt)}</p>
-                            </div>
-                          </div>
-
-                          <div>
-                            <span className="text-sm text-gray-500">Описание:</span>
-                            <p className="text-sm text-gray-900 mt-1">{submission.description || '—'}</p>
-                          </div>
-
-                          {submission.attachments.length > 0 && (
-                              <div>
-                                <span className="text-sm text-gray-500">Файлы:</span>
-                                <div className="flex flex-wrap gap-2 mt-2">
-                                  {submission.attachments.map((file, idx) => (
-                                      <Button
-                                          key={`${submission.id}-${idx}`}
-                                          type="button"
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() => openAttachment(file)}
-                                          className="h-auto py-1.5"
-                                      >
-                                        <Paperclip className="w-4 h-4 mr-2" />
-                                        {file.name}
-                                      </Button>
-                                  ))}
-                                </div>
-                              </div>
-                          )}
+                        <div>
+                          <span className="text-gray-500">Телефон:</span>
+                          <p className="text-gray-900">{submission.phone || '—'}</p>
                         </div>
-
-                        <div className="flex space-x-2">
-                          <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => toggleSubmissionStatus(submission.id)}
-                              disabled={updatingSubmissionId === submission.id}
-                          >
-                            {updatingSubmissionId === submission.id ? (
-                                <>
-                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                  Сохранение...
-                                </>
-                            ) : submission.status === 'new' ? (
-                                <>
-                                  <Check className="w-4 h-4 mr-2" />
-                                  Отметить обработанной
-                                </>
-                            ) : (
-                                <>
-                                  <X className="w-4 h-4 mr-2" />
-                                  Отметить новой
-                                </>
-                            )}
-                          </Button>
-
-                          <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={deleteSubmission}
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Удалить
-                          </Button>
+                        <div>
+                          <span className="text-gray-500">Услуга:</span>
+                          <p className="text-gray-900">{getLabel(submission.service, serviceLabelMap)}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Бюджет:</span>
+                          <p className="text-gray-900">{getLabel(submission.budget, budgetLabelMap)}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Срок:</span>
+                          <p className="text-gray-900">{getLabel(submission.timeline, timelineLabelMap)}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Дата:</span>
+                          <p className="text-gray-900">{formatDateTime(submission.createdAt)}</p>
                         </div>
                       </div>
-                  ))}
-                </div>
+
+                      <div>
+                        <span className="text-sm text-gray-500">Описание:</span>
+                        <p className="text-sm text-gray-900 mt-1">{submission.description || '—'}</p>
+                      </div>
+
+                      {submission.attachments.length > 0 && (
+                        <div>
+                          <span className="text-sm text-gray-500">Файлы:</span>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {submission.attachments.map((file, idx) => (
+                              <Button
+                                key={`${submission.id}-${idx}`}
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openAttachment(file)}
+                                className="h-auto py-1.5"
+                              >
+                                <Paperclip className="w-4 h-4 mr-2" />
+                                {file.name}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => toggleSubmissionStatus(submission.id)}
+                        disabled={updatingSubmissionId === submission.id}
+                      >
+                        {updatingSubmissionId === submission.id ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Сохранение...
+                          </>
+                        ) : submission.status === 'new' ? (
+                          <>
+                            <Check className="w-4 h-4 mr-2" />
+                            Отметить обработанной
+                          </>
+                        ) : (
+                          <>
+                            <X className="w-4 h-4 mr-2" />
+                            Отметить новой
+                          </>
+                        )}
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => deleteSubmission(submission.id)}
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Удалить
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </TabsContent>
 
-          {/* Settings Tab */}
           <TabsContent value="settings" className="space-y-6">
             <h2 className="text-2xl font-bold text-gray-900">Настройки сайта</h2>
-            
+
             <div className="bg-white rounded-lg border p-6 space-y-6">
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-gray-900">Контактная информация</h3>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Телефон</Label>
@@ -990,7 +976,7 @@ export function AdminPanel() {
 
               <div className="space-y-4 pt-6 border-t">
                 <h3 className="text-lg font-semibold text-gray-900">Социальные сети</h3>
-                
+
                 <div className="space-y-3">
                   <div className="space-y-2">
                     <Label>Instagram</Label>
@@ -1015,21 +1001,8 @@ export function AdminPanel() {
             </div>
           </TabsContent>
 
-          {/* Media Tab */}
-          <TabsContent value="media" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-gray-900">Медиатека</h2>
-              <Button className="bg-[#1973AE] hover:bg-[#155a8a]">
-                <Plus className="w-4 h-4 mr-2" />
-                Загрузить файлы
-              </Button>
-            </div>
-
-            <div className="bg-white rounded-lg border p-6">
-              <p className="text-gray-600 text-center py-12">
-                Функция медиатеки будет доступна после подключения backend
-              </p>
-            </div>
+          <TabsContent value="vacancies" className="space-y-6">
+            <VacanciesManagement />
           </TabsContent>
         </Tabs>
       </div>
