@@ -1,4 +1,4 @@
-import { apiUrl } from './api';
+import { apiUrl, getApiErrorMessage, type ApiErrorPayload } from './api';
 
 const TOKEN_KEY = 'apex_admin_token';
 const SESSION_KEY = 'apex_session';
@@ -27,11 +27,6 @@ interface LoginResponse {
   token: string;
   expiresIn: number;
   displayName: string;
-}
-
-interface ApiError {
-  message?: string;
-  Message?: string;
 }
 
 export function createSession(username: string, token: string, expiresInSeconds: number, displayName?: string): void {
@@ -80,7 +75,7 @@ export function clearSession(): void {
 }
 
 export function isAuthenticated(): boolean {
-  return !!getToken();
+  return !!getSession();
 }
 
 export async function loginAdmin(login: string, password: string): Promise<LoginResponse> {
@@ -92,14 +87,10 @@ export async function loginAdmin(login: string, password: string): Promise<Login
     body: JSON.stringify({ login, password }),
   });
 
-  const result = (await response.json().catch(() => null)) as LoginResponse | ApiError | null;
+  const result = (await response.json().catch(() => null)) as LoginResponse | ApiErrorPayload | null;
 
   if (!response.ok) {
-    throw new Error(
-        (result as ApiError)?.message ||
-        (result as ApiError)?.Message ||
-        'Ошибка входа'
-    );
+    throw new Error(getApiErrorMessage(result as ApiErrorPayload | null, 'РћС€РёР±РєР° РІС…РѕРґР°'));
   }
 
   const data = result as LoginResponse;
@@ -112,7 +103,7 @@ export async function authFetch(input: string, init: RequestInit = {}) {
 
   if (!token) {
     clearSession();
-    throw new Error('Сессия истекла. Войдите снова.');
+    throw new Error('РЎРµСЃСЃРёСЏ РёСЃС‚РµРєР»Р°. Р’РѕР№РґРёС‚Рµ СЃРЅРѕРІР°.');
   }
 
   const headers = new Headers(init.headers || {});
@@ -130,7 +121,7 @@ export async function authFetch(input: string, init: RequestInit = {}) {
 
   if (response.status === 401) {
     clearSession();
-    throw new Error('Сессия истекла. Войдите снова.');
+    throw new Error('РЎРµСЃСЃРёСЏ РёСЃС‚РµРєР»Р°. Р’РѕР№РґРёС‚Рµ СЃРЅРѕРІР°.');
   }
 
   return response;
@@ -141,7 +132,7 @@ export async function downloadProtectedFile(url: string, fileName?: string) {
 
   if (!response.ok) {
     const text = await response.text().catch(() => '');
-    throw new Error(text || 'Не удалось открыть файл');
+    throw new Error(text || 'РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РєСЂС‹С‚СЊ С„Р°Р№Р»');
   }
 
   const blob = await response.blob();
@@ -157,7 +148,6 @@ export async function downloadProtectedFile(url: string, fileName?: string) {
   window.URL.revokeObjectURL(blobUrl);
 }
 
-// client-side rate limit
 export function checkRateLimit(): { allowed: boolean; remainingTime?: number } {
   const data = localStorage.getItem(RATE_LIMIT_KEY);
   const now = Date.now();
@@ -181,8 +171,8 @@ export function checkRateLimit(): { allowed: boolean; remainingTime?: number } {
   if (rateLimit.attempts >= AUTH_CONFIG.MAX_LOGIN_ATTEMPTS) {
     const lockedUntil = now + AUTH_CONFIG.LOCKOUT_DURATION;
     localStorage.setItem(
-        RATE_LIMIT_KEY,
-        JSON.stringify({ attempts: rateLimit.attempts, lockedUntil })
+      RATE_LIMIT_KEY,
+      JSON.stringify({ attempts: rateLimit.attempts, lockedUntil }),
     );
     return {
       allowed: false,
@@ -199,8 +189,8 @@ export function recordFailedAttempt(): void {
 
   if (!data) {
     localStorage.setItem(
-        RATE_LIMIT_KEY,
-        JSON.stringify({ attempts: 1, lockedUntil: null })
+      RATE_LIMIT_KEY,
+      JSON.stringify({ attempts: 1, lockedUntil: null }),
     );
     return;
   }
@@ -210,13 +200,13 @@ export function recordFailedAttempt(): void {
 
   if (newAttempts >= AUTH_CONFIG.MAX_LOGIN_ATTEMPTS) {
     localStorage.setItem(
-        RATE_LIMIT_KEY,
-        JSON.stringify({ attempts: newAttempts, lockedUntil: now + AUTH_CONFIG.LOCKOUT_DURATION })
+      RATE_LIMIT_KEY,
+      JSON.stringify({ attempts: newAttempts, lockedUntil: now + AUTH_CONFIG.LOCKOUT_DURATION }),
     );
   } else {
     localStorage.setItem(
-        RATE_LIMIT_KEY,
-        JSON.stringify({ attempts: newAttempts, lockedUntil: null })
+      RATE_LIMIT_KEY,
+      JSON.stringify({ attempts: newAttempts, lockedUntil: null }),
     );
   }
 }

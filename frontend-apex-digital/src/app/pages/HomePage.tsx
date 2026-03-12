@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { ArrowRight, Check, Globe, Smartphone, Users, Shield, HeadphonesIcon, Phone, Send as TelegramIcon, Zap, Clock, Target, TrendingUp, Code, Gauge, FileCheck } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ArrowRight, Check, Globe, Smartphone, Users, Shield, HeadphonesIcon, Phone, Send as TelegramIcon, Target, Code, Gauge, FileCheck } from 'lucide-react';
+import { Link, useNavigate } from 'react-router';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -8,15 +9,29 @@ import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Checkbox } from '../components/ui/checkbox';
 import { FileUpload } from '../components/FileUpload';
-import { mockProjects } from '../data/mockData';
 import { Badge } from '../components/ui/badge';
 import { toast } from 'sonner';
+import { apiRequest, apiUrl, getApiErrorMessage, type ApiErrorPayload } from '../config/api';
+import type { ProjectDto, SiteSettingsDto } from '../types/api';
 
-import { API_BASE_URL } from '../config/api';
+const defaultSettings: SiteSettingsDto = {
+  phone: '+7 747 226 68 85',
+  email: 'info@apexdigital.kz',
+  address: {
+    ru: 'Астана, Казахстан',
+    kz: 'Астана, Қазақстан',
+    en: 'Astana, Kazakhstan',
+  },
+  telegram: 'https://t.me/+77472266885',
+};
 
 export function HomePage() {
   const { t, language } = useLanguage();
+  const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formSubmitted, setFormSubmitted] = useState(false);
+  const [featuredProjects, setFeaturedProjects] = useState<ProjectDto[]>([]);
+  const [settings, setSettings] = useState<SiteSettingsDto>(defaultSettings);
   const [formData, setFormData] = useState({
     name: '',
     company: '',
@@ -29,13 +44,43 @@ export function HomePage() {
     consent: false,
     files: [] as File[],
   });
-  const [formSubmitted, setFormSubmitted] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadData = async () => {
+      try {
+        const [projects, siteSettings] = await Promise.all([
+          apiRequest<ProjectDto[]>('/api/projects', undefined, 'Не удалось загрузить проекты'),
+          apiRequest<SiteSettingsDto>('/api/settings', undefined, 'Не удалось загрузить настройки сайта'),
+        ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        setFeaturedProjects(projects.slice(0, 3));
+        setSettings({ ...defaultSettings, ...siteSettings });
+      } catch {
+        if (!cancelled) {
+          setFeaturedProjects([]);
+          setSettings(defaultSettings);
+        }
+      }
+    };
+
+    loadData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.name.trim() || !formData.phone.trim() || !formData.consent) {
-      toast.error('Заполните обязательные поля');
+      toast.error('Р—Р°РїРѕР»РЅРёС‚Рµ РѕР±СЏР·Р°С‚РµР»СЊРЅС‹Рµ РїРѕР»СЏ');
       return;
     }
 
@@ -56,24 +101,19 @@ export function HomePage() {
         data.append('files', file);
       });
 
-      const response = await fetch(`${API_BASE_URL}/api/submissions/service-request`, {
+      const response = await fetch(apiUrl('/api/submissions/service-request'), {
         method: 'POST',
         body: data,
       });
 
-      const result = await response.json().catch(() => null);
+      const result = (await response.json().catch(() => null)) as ApiErrorPayload | { message?: string } | null;
 
       if (!response.ok) {
-        const message =
-            result?.message ||
-            result?.Message ||
-            'Ошибка при отправке заявки';
-        throw new Error(message);
+        throw new Error(getApiErrorMessage(result as ApiErrorPayload | null, 'РћС€РёР±РєР° РїСЂРё РѕС‚РїСЂР°РІРєРµ Р·Р°СЏРІРєРё'));
       }
 
       setFormSubmitted(true);
       toast.success(result?.message || t('form.success'));
-
       setFormData({
         name: '',
         company: '',
@@ -89,23 +129,17 @@ export function HomePage() {
 
       setTimeout(() => setFormSubmitted(false), 5000);
     } catch (error) {
-      const message =
-          error instanceof Error ? error.message : 'Ошибка при отправке заявки';
-      toast.error(message);
+      toast.error(error instanceof Error ? error.message : 'РћС€РёР±РєР° РїСЂРё РѕС‚РїСЂР°РІРєРµ Р·Р°СЏРІРєРё');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const featuredProjects = mockProjects.filter(p => p.isVisible !== false).slice(0, 3);
-
   return (
     <div className="w-full">
-      {/* Hero Section */}
       <section id="home" className="relative bg-gradient-to-b from-[#D1EDF4]/20 to-white py-12 md:py-20 overflow-hidden">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            {/* Left Content */}
             <div className="space-y-8">
               <div className="space-y-6">
                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
@@ -116,7 +150,6 @@ export function HomePage() {
                 </p>
               </div>
 
-              {/* CTAs */}
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button
                   size="lg"
@@ -143,13 +176,10 @@ export function HomePage() {
               </div>
             </div>
 
-            {/* Right Visual - positioned lower and to the right */}
             <div className="relative hidden lg:block">
               <div className="relative h-[450px] flex items-end justify-end">
-                {/* Abstract tech visual - positioned in bottom right area */}
                 <div className="relative mr-8 mb-16">
                   <div className="relative">
-                    {/* Orbits */}
                     {[1, 2, 3].map((i) => (
                       <div
                         key={i}
@@ -165,7 +195,6 @@ export function HomePage() {
                         />
                       </div>
                     ))}
-                    {/* Center gradient circle removed */}
                   </div>
                 </div>
               </div>
@@ -174,7 +203,6 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Services Preview */}
       <section id="services" className="py-20 bg-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -184,7 +212,6 @@ export function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Web */}
             <div className="group p-8 rounded-2xl border border-gray-200 hover:border-[#1973AE] hover:shadow-lg transition-all">
               <div className="w-14 h-14 rounded-xl bg-[#D1EDF4] flex items-center justify-center mb-6 group-hover:bg-[#1973AE] transition-colors">
                 <Globe className="h-7 w-7 text-[#1973AE] group-hover:text-white transition-colors" />
@@ -200,7 +227,6 @@ export function HomePage() {
               </Button>
             </div>
 
-            {/* Mobile */}
             <div className="group p-8 rounded-2xl border border-gray-200 hover:border-[#1973AE] hover:shadow-lg transition-all">
               <div className="w-14 h-14 rounded-xl bg-[#D1EDF4] flex items-center justify-center mb-6 group-hover:bg-[#1973AE] transition-colors">
                 <Smartphone className="h-7 w-7 text-[#1973AE] group-hover:text-white transition-colors" />
@@ -216,7 +242,6 @@ export function HomePage() {
               </Button>
             </div>
 
-            {/* Staff */}
             <div className="group p-8 rounded-2xl border border-gray-200 hover:border-[#1973AE] hover:shadow-lg transition-all">
               <div className="w-14 h-14 rounded-xl bg-[#D1EDF4] flex items-center justify-center mb-6 group-hover:bg-[#1973AE] transition-colors">
                 <Users className="h-7 w-7 text-[#1973AE] group-hover:text-white transition-colors" />
@@ -235,7 +260,6 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Why Apex - Bento Grid */}
       <section className="py-20 bg-gray-50">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -268,7 +292,6 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Process */}
       <section className="py-20 bg-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -305,7 +328,6 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Featured Projects */}
       <section id="projects" className="py-20 bg-gray-50">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -345,9 +367,7 @@ export function HomePage() {
                   <Button
                     variant="link"
                     className="text-[#1973AE] p-0 h-auto"
-                    onClick={() => {
-                      window.location.hash = `projects/${project.slug}`;
-                    }}
+                    onClick={() => navigate(`/projects/${project.slug}`)}
                   >
                     {t('projects.viewCase')} <ArrowRight className="ml-1 h-4 w-4" />
                   </Button>
@@ -358,7 +378,6 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Contact Form */}
       <section id="contact-form" className="py-20 bg-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto">
@@ -487,11 +506,11 @@ export function HomePage() {
                 <div className="space-y-2">
                   <Label>{t('form.upload')}</Label>
                   <FileUpload
-                      hint="PDF, DOC, DOCX, JPG, JPEG, PNG, WEBP. До 20 MB, максимум 5 файлов."
-                      maxSize={20 * 1024 * 1024}
-                      maxFiles={5}
-                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
-                      onFilesChange={(files) => setFormData({ ...formData, files })}
+                    hint="PDF, DOC, DOCX, JPG, JPEG, PNG, WEBP. До 20 MB, максимум 5 файлов."
+                    maxSize={20 * 1024 * 1024}
+                    maxFiles={5}
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+                    onFilesChange={(files) => setFormData({ ...formData, files })}
                   />
                 </div>
 
@@ -507,12 +526,12 @@ export function HomePage() {
                 </div>
 
                 <Button
-                    type="submit"
-                    size="lg"
-                    disabled={isSubmitting}
-                    className="w-full bg-[#1973AE] hover:bg-[#155a8a] text-white disabled:opacity-70"
+                  type="submit"
+                  size="lg"
+                  disabled={isSubmitting}
+                  className="w-full bg-[#1973AE] hover:bg-[#155a8a] text-white disabled:opacity-70"
                 >
-                  {isSubmitting ? 'Отправка...' : t('form.submit')}
+                  {isSubmitting ? 'РћС‚РїСЂР°РІРєР°...' : t('form.submit')}
                 </Button>
               </form>
             )}
@@ -520,7 +539,6 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Contacts Preview */}
       <section id="contact" className="py-20 bg-gray-50">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto">
@@ -538,25 +556,29 @@ export function HomePage() {
                 </h3>
                 <div className="space-y-4">
                   <div>
-                    <p className="text-sm text-gray-500 mb-1">Адрес</p>
-                    <p className="text-gray-900">{t('contact.address')}</p>
+                    <p className="text-sm text-gray-500 mb-1">РђРґСЂРµСЃ</p>
+                    <p className="text-gray-900">{settings.address[language]}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500 mb-1">{t('contact.phoneLabel')}</p>
-                    <p className="text-gray-900">{t('contact.phone')}</p>
+                    <p className="text-gray-900">{settings.phone || t('contact.phone')}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Email</p>
+                    <p className="text-gray-900">{settings.email}</p>
                   </div>
                   <div className="flex gap-3 pt-4">
-                    <Button 
+                    <Button
                       className="flex-1 bg-[#1973AE] hover:bg-[#155a8a] text-white"
-                      onClick={() => window.location.href = 'tel:+77472266885'}
+                      onClick={() => window.location.href = `tel:${(settings.phone || '').replace(/\s+/g, '')}`}
                     >
                       <Phone className="mr-2 h-4 w-4" />
                       {t('contact.call')}
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="flex-1 border-[#1973AE] text-[#1973AE]"
-                      onClick={() => window.open('https://t.me/+77472266885', '_blank')}
+                      onClick={() => window.open(settings.telegram || defaultSettings.telegram || '', '_blank', 'noopener,noreferrer')}
                     >
                       <TelegramIcon className="mr-2 h-4 w-4" />
                       Telegram
@@ -575,6 +597,11 @@ export function HomePage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">{t('contact.hours.weekend')}</span>
+                  </div>
+                  <div className="pt-4">
+                    <Link to="/contacts" className="text-[#1973AE] hover:text-[#155a8a] font-medium">
+                      Подробнее о контактах
+                    </Link>
                   </div>
                 </div>
               </div>

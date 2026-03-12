@@ -1,40 +1,77 @@
+import { useEffect, useState } from 'react';
 import { Phone, Mail, MapPin, Send, Instagram, Linkedin } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { OrbitalBackground } from '../components/OrbitalBackground';
-import { OrbitalVisual } from '../components/OrbitalVisual';
+import { apiRequest } from '../config/api';
+import type { SiteSettingsDto } from '../types/api';
+
+const fallbackSettings: SiteSettingsDto = {
+  phone: '+7 747 226 68 85',
+  email: 'info@apexdigital.kz',
+  address: {
+    ru: 'Астана, Казахстан',
+    kz: 'Астана, Қазақстан',
+    en: 'Astana, Kazakhstan',
+  },
+  instagram: '#',
+  linkedin: 'https://www.linkedin.com/company/apex-digital-kz',
+  telegram: 'https://t.me/+77472266885',
+};
 
 export function ContactPage() {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
+  const [settings, setSettings] = useState<SiteSettingsDto>(fallbackSettings);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadSettings = async () => {
+      try {
+        const result = await apiRequest<SiteSettingsDto>('/api/settings', undefined, 'Не удалось загрузить контакты');
+        if (!cancelled) {
+          setSettings({ ...fallbackSettings, ...result });
+        }
+      } catch {
+        if (!cancelled) {
+          setSettings(fallbackSettings);
+        }
+      }
+    };
+
+    loadSettings();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const contactInfo = [
     {
       icon: MapPin,
       title: { ru: 'Адрес', kz: 'Мекенжай', en: 'Address' },
-      value: { ru: 'Астана, Казахстан', kz: 'Астана, Қазақстан', en: 'Astana, Kazakhstan' },
+      value: settings.address,
     },
     {
       icon: Phone,
       title: { ru: 'Телефон', kz: 'Телефон', en: 'Phone' },
-      value: '+7 747 226 68 85',
-      link: 'tel:+77472266885',
+      value: settings.phone,
+      link: `tel:${settings.phone.replace(/\s+/g, '')}`,
     },
     {
       icon: Mail,
       title: { ru: 'Email', kz: 'Email', en: 'Email' },
-      value: 'info@apexdigital.kz',
-      link: 'mailto:info@apexdigital.kz',
+      value: settings.email,
+      link: `mailto:${settings.email}`,
     },
   ];
 
   const socialLinks = [
-    { icon: Instagram, label: 'Instagram', href: '#', color: 'hover:text-pink-600' },
-    { icon: Linkedin, label: 'LinkedIn', href: 'https://www.linkedin.com/company/apex-digital-kz', color: 'hover:text-blue-600' },
-    { icon: Send, label: 'Telegram', href: 'https://t.me/+77472266885', color: 'hover:text-blue-500' },
+    { icon: Instagram, label: 'Instagram', href: settings.instagram || '#', color: 'hover:text-pink-600' },
+    { icon: Linkedin, label: 'LinkedIn', href: settings.linkedin || '#', color: 'hover:text-blue-600' },
+    { icon: Send, label: 'Telegram', href: settings.telegram || '#', color: 'hover:text-blue-500' },
   ];
 
   return (
     <div className="w-full">
-      {/* Hero */}
       <section className="relative py-20 md:py-28 bg-gradient-to-b from-[#D1EDF4]/20 to-white overflow-hidden">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="max-w-3xl mx-auto text-center mb-12">
@@ -50,7 +87,6 @@ export function ContactPage() {
             </p>
           </div>
 
-          {/* Contact Info - moved here */}
           <div className="max-w-4xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {contactInfo.map((item, idx) => {
@@ -86,14 +122,13 @@ export function ContactPage() {
         </div>
       </section>
 
-      {/* Map Placeholder */}
       <section className="py-20 bg-gray-50">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-6xl mx-auto">
             <h3 className="text-2xl font-semibold text-gray-900 mb-8 text-center">
-              {language === 'ru' && 'Наше расположение - город Астана, Казахстан'}
-              {language === 'kz' && 'Біздің орналасуымыз - Астана қаласы, Қазақстан'}
-              {language === 'en' && 'Our Location - Astana, Kazakhstan'}
+              {language === 'ru' && `Наше расположение - ${settings.address.ru}`}
+              {language === 'kz' && `Біздің орналасуымыз - ${settings.address.kz}`}
+              {language === 'en' && `Our Location - ${settings.address.en}`}
             </h3>
             <div className="aspect-video rounded-2xl overflow-hidden shadow-lg">
               <iframe
@@ -110,7 +145,6 @@ export function ContactPage() {
         </div>
       </section>
 
-      {/* Social Media */}
       <section className="py-20 bg-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-6xl mx-auto">
@@ -127,6 +161,8 @@ export function ContactPage() {
                     <a
                       key={social.label}
                       href={social.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className={`inline-flex items-center justify-center w-14 h-14 rounded-full bg-gray-100 text-gray-600 transition-all hover:scale-110 ${social.color}`}
                       aria-label={social.label}
                     >

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router';
 import { ArrowLeft, MapPin, Briefcase, Clock, Upload, X, CheckCircle } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Job } from '../data/jobsData';
+import type { JobDto as Job } from '../types/api';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -45,7 +45,7 @@ export function JobDetailPage() {
           throw new Error(
               result?.message ||
               result?.Message ||
-              'Вакансия не найдена'
+              'Р’Р°РєР°РЅСЃРёСЏ РЅРµ РЅР°Р№РґРµРЅР°'
           );
         }
 
@@ -54,7 +54,7 @@ export function JobDetailPage() {
         }
       } catch (err) {
         if (!ignore) {
-          setLoadError(err instanceof Error ? err.message : 'Ошибка загрузки вакансии');
+          setLoadError(err instanceof Error ? err.message : 'РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё РІР°РєР°РЅСЃРёРё');
           setJob(null);
         }
       } finally {
@@ -73,28 +73,28 @@ export function JobDetailPage() {
 
   const getDepartmentLabel = (dept: string) => {
     const labels = {
-      dev: { ru: 'Разработка', kz: 'Әзірлеу', en: 'Development' },
-      design: { ru: 'Дизайн', kz: 'Дизайн', en: 'Design' },
-      pm: { ru: 'Менеджмент', kz: 'Менеджмент', en: 'Management' },
-      other: { ru: 'Другое', kz: 'Басқа', en: 'Other' },
+      dev: { ru: 'Р Р°Р·СЂР°Р±РѕС‚РєР°', kz: 'УР·С–СЂР»РµСѓ', en: 'Development' },
+      design: { ru: 'Р”РёР·Р°Р№РЅ', kz: 'Р”РёР·Р°Р№РЅ', en: 'Design' },
+      pm: { ru: 'РњРµРЅРµРґР¶РјРµРЅС‚', kz: 'РњРµРЅРµРґР¶РјРµРЅС‚', en: 'Management' },
+      other: { ru: 'Р”СЂСѓРіРѕРµ', kz: 'Р‘Р°СЃТ›Р°', en: 'Other' },
     };
     return labels[dept as keyof typeof labels]?.[language] || dept;
   };
 
   const getLocationLabel = (loc: string) => {
     const labels = {
-      astana: { ru: 'Астана', kz: 'Астана', en: 'Astana' },
-      remote: { ru: 'Удалённо', kz: 'Қашықтан', en: 'Remote' },
-      hybrid: { ru: 'Гибрид', kz: 'Гибрид', en: 'Hybrid' },
+      astana: { ru: 'РђСЃС‚Р°РЅР°', kz: 'РђСЃС‚Р°РЅР°', en: 'Astana' },
+      remote: { ru: 'РЈРґР°Р»С‘РЅРЅРѕ', kz: 'ТљР°С€С‹Т›С‚Р°РЅ', en: 'Remote' },
+      hybrid: { ru: 'Р“РёР±СЂРёРґ', kz: 'Р“РёР±СЂРёРґ', en: 'Hybrid' },
     };
     return labels[loc as keyof typeof labels]?.[language] || loc;
   };
 
   const getEmploymentLabel = (type: string) => {
     const labels = {
-      'full-time': { ru: 'Полная занятость', kz: 'Толық жұмыс', en: 'Full-time' },
-      'part-time': { ru: 'Частичная занятость', kz: 'Толық емес жұмыс', en: 'Part-time' },
-      contract: { ru: 'Контракт', kz: 'Контракт', en: 'Contract' },
+      'full-time': { ru: 'РџРѕР»РЅР°СЏ Р·Р°РЅСЏС‚РѕСЃС‚СЊ', kz: 'РўРѕР»С‹Т› Р¶Т±РјС‹СЃ', en: 'Full-time' },
+      'part-time': { ru: 'Р§Р°СЃС‚РёС‡РЅР°СЏ Р·Р°РЅСЏС‚РѕСЃС‚СЊ', kz: 'РўРѕР»С‹Т› РµРјРµСЃ Р¶Т±РјС‹СЃ', en: 'Part-time' },
+      contract: { ru: 'РљРѕРЅС‚СЂР°РєС‚', kz: 'РљРѕРЅС‚СЂР°РєС‚', en: 'Contract' },
     };
     return labels[type as keyof typeof labels]?.[language] || type;
   };
@@ -104,10 +104,10 @@ export function JobDetailPage() {
     const now = new Date();
     const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
 
-    if (diffDays === 0) return language === 'ru' ? 'Сегодня' : language === 'kz' ? 'Бүгін' : 'Today';
-    if (diffDays === 1) return language === 'ru' ? 'Вчера' : language === 'kz' ? 'Кеше' : 'Yesterday';
-    if (diffDays < 7) return `${diffDays} ${language === 'ru' ? 'дн. назад' : language === 'kz' ? 'күн бұрын' : 'd ago'}`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} ${language === 'ru' ? 'нед. назад' : language === 'kz' ? 'апта бұрын' : 'w ago'}`;
+    if (diffDays === 0) return language === 'ru' ? 'РЎРµРіРѕРґРЅСЏ' : language === 'kz' ? 'Р‘ТЇРіС–РЅ' : 'Today';
+    if (diffDays === 1) return language === 'ru' ? 'Р’С‡РµСЂР°' : language === 'kz' ? 'РљРµС€Рµ' : 'Yesterday';
+    if (diffDays < 7) return `${diffDays} ${language === 'ru' ? 'РґРЅ. РЅР°Р·Р°Рґ' : language === 'kz' ? 'РєТЇРЅ Р±Т±СЂС‹РЅ' : 'd ago'}`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} ${language === 'ru' ? 'РЅРµРґ. РЅР°Р·Р°Рґ' : language === 'kz' ? 'Р°РїС‚Р° Р±Т±СЂС‹РЅ' : 'w ago'}`;
     return date.toLocaleDateString(language === 'ru' ? 'ru-RU' : language === 'kz' ? 'kk-KZ' : 'en-US');
   };
 
@@ -126,7 +126,7 @@ export function JobDetailPage() {
     e.preventDefault();
 
     if (!job || !name.trim() || !phone.trim() || !resumeFile) {
-      toast.error('Заполните обязательные поля');
+      toast.error('Р—Р°РїРѕР»РЅРёС‚Рµ РѕР±СЏР·Р°С‚РµР»СЊРЅС‹Рµ РїРѕР»СЏ');
       return;
     }
 
@@ -150,7 +150,7 @@ export function JobDetailPage() {
         throw new Error(
             result?.message ||
             result?.Message ||
-            'Ошибка при отправке отклика'
+            'РћС€РёР±РєР° РїСЂРё РѕС‚РїСЂР°РІРєРµ РѕС‚РєР»РёРєР°'
         );
       }
 
@@ -160,9 +160,9 @@ export function JobDetailPage() {
       setPhone('');
       setResumeFile(null);
 
-      toast.success(result?.message || 'Заявка отправлена');
+      toast.success(result?.message || 'Р—Р°СЏРІРєР° РѕС‚РїСЂР°РІР»РµРЅР°');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Ошибка при отправке отклика');
+      toast.error(error instanceof Error ? error.message : 'РћС€РёР±РєР° РїСЂРё РѕС‚РїСЂР°РІРєРµ РѕС‚РєР»РёРєР°');
     } finally {
       setUploading(false);
     }
@@ -172,8 +172,8 @@ export function JobDetailPage() {
     return (
         <div className="w-full min-h-screen flex items-center justify-center">
           <div className="text-center text-gray-600">
-            {language === 'ru' && 'Загрузка вакансии...'}
-            {language === 'kz' && 'Вакансия жүктелуде...'}
+            {language === 'ru' && 'Р—Р°РіСЂСѓР·РєР° РІР°РєР°РЅСЃРёРё...'}
+            {language === 'kz' && 'Р’Р°РєР°РЅСЃРёСЏ Р¶ТЇРєС‚РµР»СѓРґРµ...'}
             {language === 'en' && 'Loading job...'}
           </div>
         </div>
@@ -187,14 +187,14 @@ export function JobDetailPage() {
             <h2 className="text-2xl font-bold text-gray-900 mb-4">
               {loadError ||
                   (language === 'ru'
-                      ? 'Вакансия не найдена'
+                      ? 'Р’Р°РєР°РЅСЃРёСЏ РЅРµ РЅР°Р№РґРµРЅР°'
                       : language === 'kz'
-                          ? 'Вакансия табылмады'
+                          ? 'Р’Р°РєР°РЅСЃРёСЏ С‚Р°Р±С‹Р»РјР°РґС‹'
                           : 'Job not found')}
             </h2>
             <Button onClick={() => navigate('/careers')}>
-              {language === 'ru' && 'Назад к вакансиям'}
-              {language === 'kz' && 'Вакансияларға оралу'}
+              {language === 'ru' && 'РќР°Р·Р°Рґ Рє РІР°РєР°РЅСЃРёСЏРј'}
+              {language === 'kz' && 'Р’Р°РєР°РЅСЃРёСЏР»Р°СЂТ“Р° РѕСЂР°Р»Сѓ'}
               {language === 'en' && 'Back to careers'}
             </Button>
           </div>
@@ -214,8 +214,8 @@ export function JobDetailPage() {
             <div className="max-w-4xl mx-auto">
               <Link to="/careers" className="inline-flex items-center text-[#1973AE] hover:text-[#39D2ED] mb-6 transition-colors">
                 <ArrowLeft className="w-5 h-5 mr-2" />
-                {language === 'ru' && 'Все вакансии'}
-                {language === 'kz' && 'Барлық вакансиялар'}
+                {language === 'ru' && 'Р’СЃРµ РІР°РєР°РЅСЃРёРё'}
+                {language === 'kz' && 'Р‘Р°СЂР»С‹Т› РІР°РєР°РЅСЃРёСЏР»Р°СЂ'}
                 {language === 'en' && 'All jobs'}
               </Link>
 
@@ -240,8 +240,8 @@ export function JobDetailPage() {
 
                   <div className="flex items-center gap-3">
                     <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                      {language === 'ru' && 'Открыта'}
-                      {language === 'kz' && 'Ашық'}
+                      {language === 'ru' && 'РћС‚РєСЂС‹С‚Р°'}
+                      {language === 'kz' && 'РђС€С‹Т›'}
                       {language === 'en' && 'Open'}
                     </Badge>
                     <Badge variant="secondary">{getEmploymentLabel(job.employmentType)}</Badge>
@@ -255,8 +255,8 @@ export function JobDetailPage() {
                       onClick={() => setShowApplicationForm(true)}
                       className="bg-[#1973AE] text-white hover:bg-[#39D2ED]"
                   >
-                    {language === 'ru' && 'Откликнуться'}
-                    {language === 'kz' && 'Үміткер болу'}
+                    {language === 'ru' && 'РћС‚РєР»РёРєРЅСѓС‚СЊСЃСЏ'}
+                    {language === 'kz' && 'Т®РјС–С‚РєРµСЂ Р±РѕР»Сѓ'}
                     {language === 'en' && 'Apply'}
                   </Button>
               )}
@@ -266,13 +266,13 @@ export function JobDetailPage() {
                     <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0" />
                     <div>
                       <h3 className="font-semibold text-green-900 mb-1">
-                        {language === 'ru' && 'Отклик отправлен!'}
-                        {language === 'kz' && 'Өтініш жіберілді!'}
+                        {language === 'ru' && 'РћС‚РєР»РёРє РѕС‚РїСЂР°РІР»РµРЅ!'}
+                        {language === 'kz' && 'УЁС‚С–РЅС–С€ Р¶С–Р±РµСЂС–Р»РґС–!'}
                         {language === 'en' && 'Application submitted!'}
                       </h3>
                       <p className="text-green-700">
-                        {language === 'ru' && 'Мы рассмотрим вашу заявку и свяжемся с вами в ближайшее время.'}
-                        {language === 'kz' && 'Біз сіздің өтінішіңізді қарастырамыз және жақын арада хабарласамыз.'}
+                        {language === 'ru' && 'РњС‹ СЂР°СЃСЃРјРѕС‚СЂРёРј РІР°С€Сѓ Р·Р°СЏРІРєСѓ Рё СЃРІСЏР¶РµРјСЃСЏ СЃ РІР°РјРё РІ Р±Р»РёР¶Р°Р№С€РµРµ РІСЂРµРјСЏ.'}
+                        {language === 'kz' && 'Р‘С–Р· СЃС–Р·РґС–ТЈ У©С‚С–РЅС–С€С–ТЈС–Р·РґС– Т›Р°СЂР°СЃС‚С‹СЂР°РјС‹Р· Р¶У™РЅРµ Р¶Р°Т›С‹РЅ Р°СЂР°РґР° С…Р°Р±Р°СЂР»Р°СЃР°РјС‹Р·.'}
                         {language === 'en' && 'We will review your application and contact you soon.'}
                       </p>
                     </div>
@@ -289,8 +289,8 @@ export function JobDetailPage() {
                   <div className="bg-gradient-to-br from-[#D1EDF4]/20 to-white rounded-2xl p-8 border border-gray-200">
                     <div className="flex items-center justify-between mb-6">
                       <h2 className="text-2xl font-bold text-gray-900">
-                        {language === 'ru' && 'Форма отклика'}
-                        {language === 'kz' && 'Өтініш формасы'}
+                        {language === 'ru' && 'Р¤РѕСЂРјР° РѕС‚РєР»РёРєР°'}
+                        {language === 'kz' && 'УЁС‚С–РЅС–С€ С„РѕСЂРјР°СЃС‹'}
                         {language === 'en' && 'Application Form'}
                       </h2>
                       <Button
@@ -305,8 +305,8 @@ export function JobDetailPage() {
                     <form onSubmit={handleSubmit} className="space-y-6">
                       <div>
                         <Label htmlFor="name" className="text-gray-900 font-medium mb-2 block">
-                          {language === 'ru' && 'Имя'}
-                          {language === 'kz' && 'Аты'}
+                          {language === 'ru' && 'РРјСЏ'}
+                          {language === 'kz' && 'РђС‚С‹'}
                           {language === 'en' && 'Name'}
                           <span className="text-red-500 ml-1">*</span>
                         </Label>
@@ -322,8 +322,8 @@ export function JobDetailPage() {
 
                       <div>
                         <Label htmlFor="phone" className="text-gray-900 font-medium mb-2 block">
-                          {language === 'ru' && 'Телефон'}
-                          {language === 'kz' && 'Телефон'}
+                          {language === 'ru' && 'РўРµР»РµС„РѕРЅ'}
+                          {language === 'kz' && 'РўРµР»РµС„РѕРЅ'}
                           {language === 'en' && 'Phone'}
                           <span className="text-red-500 ml-1">*</span>
                         </Label>
@@ -350,8 +350,8 @@ export function JobDetailPage() {
                             >
                               <Upload className="w-8 h-8 text-gray-400 mb-3" />
                               <span className="text-gray-700">
-                          {language === 'ru' && 'Загрузить резюме'}
-                                {language === 'kz' && 'Резюме жүктеу'}
+                          {language === 'ru' && 'Р—Р°РіСЂСѓР·РёС‚СЊ СЂРµР·СЋРјРµ'}
+                                {language === 'kz' && 'Р РµР·СЋРјРµ Р¶ТЇРєС‚РµСѓ'}
                                 {language === 'en' && 'Upload resume'}
                         </span>
                               <input
@@ -384,14 +384,14 @@ export function JobDetailPage() {
                       >
                         {uploading
                             ? language === 'ru'
-                                ? 'Отправка...'
+                                ? 'РћС‚РїСЂР°РІРєР°...'
                                 : language === 'kz'
-                                    ? 'Жіберілуде...'
+                                    ? 'Р–С–Р±РµСЂС–Р»СѓРґРµ...'
                                     : 'Submitting...'
                             : language === 'ru'
-                                ? 'Отправить отклик'
+                                ? 'РћС‚РїСЂР°РІРёС‚СЊ РѕС‚РєР»РёРє'
                                 : language === 'kz'
-                                    ? 'Өтініш жіберу'
+                                    ? 'УЁС‚С–РЅС–С€ Р¶С–Р±РµСЂСѓ'
                                     : 'Submit application'}
                       </Button>
                     </form>
@@ -406,8 +406,8 @@ export function JobDetailPage() {
             <div className="max-w-4xl mx-auto space-y-10">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                  {language === 'ru' && 'О роли'}
-                  {language === 'kz' && 'Рөл туралы'}
+                  {language === 'ru' && 'Рћ СЂРѕР»Рё'}
+                  {language === 'kz' && 'Р У©Р» С‚СѓСЂР°Р»С‹'}
                   {language === 'en' && 'About the role'}
                 </h2>
                 <p className="text-gray-700 leading-8 whitespace-pre-line">{desc.role}</p>
@@ -416,8 +416,8 @@ export function JobDetailPage() {
               {desc.tasks?.length > 0 && (
                   <div>
                     <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                      {language === 'ru' && 'Задачи'}
-                      {language === 'kz' && 'Міндеттер'}
+                      {language === 'ru' && 'Р—Р°РґР°С‡Рё'}
+                      {language === 'kz' && 'РњС–РЅРґРµС‚С‚РµСЂ'}
                       {language === 'en' && 'Tasks'}
                     </h2>
                     <ul className="space-y-3">
@@ -434,8 +434,8 @@ export function JobDetailPage() {
               {desc.requirements?.length > 0 && (
                   <div>
                     <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                      {language === 'ru' && 'Требования'}
-                      {language === 'kz' && 'Талаптар'}
+                      {language === 'ru' && 'РўСЂРµР±РѕРІР°РЅРёСЏ'}
+                      {language === 'kz' && 'РўР°Р»Р°РїС‚Р°СЂ'}
                       {language === 'en' && 'Requirements'}
                     </h2>
                     <ul className="space-y-3">
@@ -452,8 +452,8 @@ export function JobDetailPage() {
               {desc.plusPoints?.length > 0 && (
                   <div>
                     <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                      {language === 'ru' && 'Будет плюсом'}
-                      {language === 'kz' && 'Артықшылық болады'}
+                      {language === 'ru' && 'Р‘СѓРґРµС‚ РїР»СЋСЃРѕРј'}
+                      {language === 'kz' && 'РђСЂС‚С‹Т›С€С‹Р»С‹Т› Р±РѕР»Р°РґС‹'}
                       {language === 'en' && 'Nice to have'}
                     </h2>
                     <ul className="space-y-3">
@@ -470,8 +470,8 @@ export function JobDetailPage() {
               {desc.conditions?.length > 0 && (
                   <div>
                     <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                      {language === 'ru' && 'Условия'}
-                      {language === 'kz' && 'Шарттар'}
+                      {language === 'ru' && 'РЈСЃР»РѕРІРёСЏ'}
+                      {language === 'kz' && 'РЁР°СЂС‚С‚Р°СЂ'}
                       {language === 'en' && 'Conditions'}
                     </h2>
                     <ul className="space-y-3">

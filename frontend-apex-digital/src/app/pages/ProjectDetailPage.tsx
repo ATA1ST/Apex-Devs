@@ -1,27 +1,70 @@
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router';
 import { ArrowLeft, Check, ExternalLink } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { mockProjects } from '../data/mockData';
 import { OrbitalBackground } from '../components/OrbitalBackground';
+import { apiRequest } from '../config/api';
+import type { ProjectDto } from '../types/api';
 
-interface ProjectDetailPageProps {
-  slug: string;
-  onBack: () => void;
-}
-
-export function ProjectDetailPage({ slug, onBack }: ProjectDetailPageProps) {
+export function ProjectDetailPage() {
+  const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
   const { t, language } = useLanguage();
-  const project = mockProjects.find((p) => p.slug === slug);
+  const [project, setProject] = useState<ProjectDto | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!slug) {
+      setIsLoading(false);
+      setProject(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadProject = async () => {
+      try {
+        setIsLoading(true);
+        setError('');
+        const result = await apiRequest<ProjectDto>(`/api/projects/${slug}`, undefined, 'Project not found');
+
+        if (!cancelled) {
+          setProject(result);
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setProject(null);
+          setError(loadError instanceof Error ? loadError.message : 'Project not found');
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadProject();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
+
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center text-gray-500">Loading project...</div>;
+  }
 
   if (!project) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">
-            {t('projectDetail.notFound')}
+            {error || t('projectDetail.notFound')}
           </h2>
-          <Button onClick={onBack} variant="outline">
+          <Button onClick={() => navigate('/projects')} variant="outline">
             <ArrowLeft className="mr-2 h-4 w-4" />
             {t('projectDetail.back')}
           </Button>
@@ -34,7 +77,7 @@ export function ProjectDetailPage({ slug, onBack }: ProjectDetailPageProps) {
     done: 'bg-green-100 text-green-700 border-green-200',
     progress: 'bg-blue-100 text-blue-700 border-blue-200',
     discovery: 'bg-purple-100 text-purple-700 border-purple-200',
-  };
+  } as const;
 
   const statusLabels = {
     done: t('projects.status.done'),
@@ -42,13 +85,14 @@ export function ProjectDetailPage({ slug, onBack }: ProjectDetailPageProps) {
     discovery: t('projects.status.discovery'),
   };
 
+  const statusKey = (project.status in statusColors ? project.status : 'progress') as keyof typeof statusColors;
+
   return (
     <div className="min-h-screen bg-white">
-      {/* Hero Section */}
       <section className="relative bg-gradient-to-b from-gray-50 to-white py-12 overflow-hidden">
         <OrbitalBackground variant="small" position="right" className="opacity-20" />
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <Button onClick={onBack} variant="ghost" className="mb-8 -ml-4">
+          <Button onClick={() => navigate('/projects')} variant="ghost" className="mb-8 -ml-4">
             <ArrowLeft className="mr-2 h-4 w-4" />
             {t('projectDetail.back')}
           </Button>
@@ -56,8 +100,8 @@ export function ProjectDetailPage({ slug, onBack }: ProjectDetailPageProps) {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
             <div>
               <div className="flex flex-wrap gap-2 mb-4">
-                <Badge className={`${statusColors[project.status]} border`}>
-                  {statusLabels[project.status]}
+                <Badge className={`${statusColors[statusKey]} border`}>
+                  {statusLabels[statusKey]}
                 </Badge>
                 {project.tags.map((tag) => (
                   <Badge key={tag} variant="secondary" className="bg-[#D1EDF4] text-[#1973AE]">
@@ -93,7 +137,6 @@ export function ProjectDetailPage({ slug, onBack }: ProjectDetailPageProps) {
         </div>
       </section>
 
-      {/* Challenge Section */}
       {project.challenge && (
         <section className="py-16 bg-white">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -109,7 +152,6 @@ export function ProjectDetailPage({ slug, onBack }: ProjectDetailPageProps) {
         </section>
       )}
 
-      {/* Solution Section */}
       {project.solution && (
         <section className="py-16 bg-gray-50">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -125,7 +167,6 @@ export function ProjectDetailPage({ slug, onBack }: ProjectDetailPageProps) {
         </section>
       )}
 
-      {/* Features Section */}
       {project.features && (
         <section className="py-16 bg-white">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -148,7 +189,6 @@ export function ProjectDetailPage({ slug, onBack }: ProjectDetailPageProps) {
         </section>
       )}
 
-      {/* Tech Stack Section */}
       {project.stack && (
         <section className="py-16 bg-gray-50">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -172,7 +212,6 @@ export function ProjectDetailPage({ slug, onBack }: ProjectDetailPageProps) {
         </section>
       )}
 
-      {/* Gallery Section */}
       {project.gallery && project.gallery.length > 0 && (
         <section className="py-16 bg-white">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -196,7 +235,6 @@ export function ProjectDetailPage({ slug, onBack }: ProjectDetailPageProps) {
         </section>
       )}
 
-      {/* Results Section */}
       {project.results && (
         <section className="py-16 bg-gradient-to-br from-[#1973AE] to-[#39D2ED]">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -212,7 +250,6 @@ export function ProjectDetailPage({ slug, onBack }: ProjectDetailPageProps) {
         </section>
       )}
 
-      {/* CTA Section */}
       <section className="py-20 bg-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto text-center">
@@ -225,12 +262,7 @@ export function ProjectDetailPage({ slug, onBack }: ProjectDetailPageProps) {
             <Button
               size="lg"
               className="bg-[#1973AE] hover:bg-[#155a8a] text-white"
-              onClick={() => {
-                window.location.hash = 'home';
-                setTimeout(() => {
-                  document.querySelector('#contact-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }, 100);
-              }}
+              onClick={() => navigate('/')}
             >
               {t('projectDetail.cta.button')}
               <ExternalLink className="ml-2 h-5 w-5" />
