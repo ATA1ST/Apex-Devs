@@ -7,12 +7,17 @@ import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { Textarea } from '../components/ui/textarea';
 import { OrbitalVisual } from '../components/OrbitalVisual';
+
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, '') || 'http://localhost:5200';
 
 export function JobDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { language } = useLanguage();
+
   const [job, setJob] = useState<Job | null>(null);
   const [showApplicationForm, setShowApplicationForm] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -23,8 +28,13 @@ export function JobDetailPage() {
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
 
+  const [email, setEmail] = useState('');
+  const [links, setLinks] = useState(['', '', '']);
+  const [message, setMessage] = useState('');
+
   useEffect(() => {
     if (!slug) return;
+
     const foundJob = jobsStorage.getJobBySlug(slug);
     if (foundJob) {
       setJob(foundJob);
@@ -39,6 +49,7 @@ export function JobDetailPage() {
       pm: { ru: 'Менеджмент', kz: 'Менеджмент', en: 'Management' },
       other: { ru: 'Другое', kz: 'Басқа', en: 'Other' },
     };
+
     return labels[dept as keyof typeof labels]?.[language] || dept;
   };
 
@@ -48,6 +59,7 @@ export function JobDetailPage() {
       remote: { ru: 'Удалённо', kz: 'Қашықтан', en: 'Remote' },
       hybrid: { ru: 'Гибрид', kz: 'Гибрид', en: 'Hybrid' },
     };
+
     return labels[loc as keyof typeof labels]?.[language] || loc;
   };
 
@@ -57,6 +69,7 @@ export function JobDetailPage() {
       'part-time': { ru: 'Частичная занятость', kz: 'Толық емес жұмыс', en: 'Part-time' },
       contract: { ru: 'Контракт', kz: 'Контракт', en: 'Contract' },
     };
+
     return labels[type as keyof typeof labels]?.[language] || type;
   };
 
@@ -67,16 +80,55 @@ export function JobDetailPage() {
 
     if (diffDays === 0) return language === 'ru' ? 'Сегодня' : language === 'kz' ? 'Бүгін' : 'Today';
     if (diffDays === 1) return language === 'ru' ? 'Вчера' : language === 'kz' ? 'Кеше' : 'Yesterday';
-    if (diffDays < 7) return `${diffDays} ${language === 'ru' ? 'дн. назад' : language === 'kz' ? 'күн бұрын' : 'd ago'}`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} ${language === 'ru' ? 'нед. назад' : language === 'kz' ? 'апта бұрын' : 'w ago'}`;
-    return date.toLocaleDateString(language === 'ru' ? 'ru-RU' : language === 'kz' ? 'kk-KZ' : 'en-US');
+    if (diffDays < 7) {
+      return `${diffDays} ${
+        language === 'ru' ? 'дн. назад' : language === 'kz' ? 'күн бұрын' : 'd ago'
+      }`;
+    }
+    if (diffDays < 30) {
+      return `${Math.floor(diffDays / 7)} ${
+        language === 'ru' ? 'нед. назад' : language === 'kz' ? 'апта бұрын' : 'w ago'
+      }`;
+    }
+
+    return date.toLocaleDateString(
+      language === 'ru' ? 'ru-RU' : language === 'kz' ? 'kk-KZ' : 'en-US'
+    );
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setResumeFile(file);
+    if (!file) return;
+
+    const allowedExtensions = ['pdf', 'doc', 'docx'];
+    const extension = file.name.split('.').pop()?.toLowerCase() || '';
+    const maxSize = 10 * 1024 * 1024;
+
+    if (!allowedExtensions.includes(extension)) {
+      alert(
+        language === 'ru'
+          ? 'Разрешены только файлы PDF, DOC, DOCX'
+          : language === 'kz'
+          ? 'Тек PDF, DOC, DOCX файлдарына рұқсат етіледі'
+          : 'Only PDF, DOC, DOCX files are allowed'
+      );
+      e.target.value = '';
+      return;
     }
+
+    if (file.size > maxSize) {
+      alert(
+        language === 'ru'
+          ? 'Максимальный размер файла 10 MB'
+          : language === 'kz'
+          ? 'Файлдың максималды көлемі 10 MB'
+          : 'Maximum file size is 10 MB'
+      );
+      e.target.value = '';
+      return;
+    }
+
+    setResumeFile(file);
   };
 
   const handleRemoveFile = () => {
@@ -85,36 +137,70 @@ export function JobDetailPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!job || !name || !phone || !resumeFile) return;
 
-    setUploading(true);
+    if (!job || !name.trim() || !email.trim() || !phone.trim() || !resumeFile) return;
 
-    // Simulate file upload
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      setUploading(true);
 
-    // Create applicant
-    jobsStorage.createApplicant({
-      jobId: job.id,
-      jobTitle: job.title[language],
-      name,
-      phone,
-      email: '', // Not required in this flow
-      resumeFile: {
-        name: resumeFile.name,
-        size: resumeFile.size,
-        type: resumeFile.type,
-        url: URL.createObjectURL(resumeFile),
-      },
-    });
+      const formData = new FormData();
+      formData.append('JobId', job.id);
+      formData.append('Name', name.trim());
+      formData.append('Email', email.trim());
+      formData.append('Phone', phone.trim());
 
-    setUploading(false);
-    setSubmitted(true);
-    setShowApplicationForm(false);
+      const filteredLinks = links.map((item) => item.trim()).filter(Boolean);
+      formData.append('Links', filteredLinks.join('\n'));
+      formData.append('Message', message.trim());
+      formData.append('Resume', resumeFile);
 
-    // Reset form
-    setName('');
-    setPhone('');
-    setResumeFile(null);
+      const response = await fetch(`${API_BASE_URL}/api/submissions/job-application`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        let errorMessage =
+          language === 'ru'
+            ? 'Ошибка при отправке отклика'
+            : language === 'kz'
+            ? 'Өтінішті жіберу қатесі'
+            : 'Failed to submit application';
+
+        try {
+          const errorData = await response.json();
+          if (errorData?.message) {
+            errorMessage = errorData.message;
+          }
+        } catch {
+          // ignore parse error
+        }
+
+        throw new Error(errorMessage);
+      }
+
+      setSubmitted(true);
+      setShowApplicationForm(false);
+
+      setName('');
+      setEmail('');
+      setPhone('');
+      setLinks(['', '', '']);
+      setMessage('');
+      setResumeFile(null);
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : language === 'ru'
+          ? 'Не удалось отправить отклик'
+          : language === 'kz'
+          ? 'Өтінішті жіберу мүмкін болмады'
+          : 'Failed to submit application'
+      );
+    } finally {
+      setUploading(false);
+    }
   };
 
   if (!job) {
@@ -143,9 +229,13 @@ export function JobDetailPage() {
         <div className="absolute inset-0 opacity-10">
           <OrbitalVisual variant="careers" />
         </div>
+
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="max-w-4xl mx-auto">
-            <Link to="/careers" className="inline-flex items-center text-[#1973AE] hover:text-[#39D2ED] mb-6 transition-colors">
+            <Link
+              to="/careers"
+              className="inline-flex items-center text-[#1973AE] hover:text-[#39D2ED] mb-6 transition-colors"
+            >
               <ArrowLeft className="w-5 h-5 mr-2" />
               {language === 'ru' && 'Все вакансии'}
               {language === 'kz' && 'Барлық вакансиялар'}
@@ -155,6 +245,7 @@ export function JobDetailPage() {
             <div className="flex items-start justify-between gap-6 mb-6">
               <div>
                 <h1 className="text-4xl font-bold text-gray-900 mb-4">{job.title[language]}</h1>
+
                 <div className="flex flex-wrap items-center gap-4 text-gray-600 mb-4">
                   <span className="flex items-center gap-2">
                     <Briefcase className="w-5 h-5" />
@@ -169,6 +260,7 @@ export function JobDetailPage() {
                     {formatDate(job.postedDate)}
                   </span>
                 </div>
+
                 <div className="flex items-center gap-3">
                   <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                     {language === 'ru' && 'Открыта'}
@@ -202,9 +294,12 @@ export function JobDetailPage() {
                     {language === 'en' && 'Application submitted!'}
                   </h3>
                   <p className="text-green-700">
-                    {language === 'ru' && 'Мы рассмотрим вашу заявку и свяжемся с вами в ближайшее время.'}
-                    {language === 'kz' && 'Біз сіздің өтінішіңізді қарастырамыз және жақын арада хабарласамыз.'}
-                    {language === 'en' && 'We will review your application and contact you soon.'}
+                    {language === 'ru' &&
+                      'Мы рассмотрим вашу заявку и свяжемся с вами в ближайшее время.'}
+                    {language === 'kz' &&
+                      'Біз сіздің өтінішіңізді қарастырамыз және жақын арада хабарласамыз.'}
+                    {language === 'en' &&
+                      'We will review your application and contact you soon.'}
                   </p>
                 </div>
               </div>
@@ -225,11 +320,7 @@ export function JobDetailPage() {
                     {language === 'kz' && 'Өтініш формасы'}
                     {language === 'en' && 'Application Form'}
                   </h2>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowApplicationForm(false)}
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => setShowApplicationForm(false)}>
                     <X className="w-5 h-5" />
                   </Button>
                 </div>
@@ -248,9 +339,33 @@ export function JobDetailPage() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder={
-                        language === 'ru' ? 'Введите ваше имя' :
-                        language === 'kz' ? 'Атыңызды енгізіңіз' :
-                        'Enter your name'
+                        language === 'ru'
+                          ? 'Введите ваше имя'
+                          : language === 'kz'
+                          ? 'Атыңызды енгізіңіз'
+                          : 'Enter your name'
+                      }
+                      required
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="email" className="text-gray-900 font-medium mb-2 block">
+                      Email
+                      <span className="text-red-500 ml-1">*</span>
+                    </Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder={
+                        language === 'ru'
+                          ? 'Введите ваш email'
+                          : language === 'kz'
+                          ? 'Email енгізіңіз'
+                          : 'Enter your email'
                       }
                       required
                       className="w-full"
@@ -277,11 +392,87 @@ export function JobDetailPage() {
 
                   <div>
                     <Label className="text-gray-900 font-medium mb-2 block">
+                      {language === 'ru' && 'Ссылки'}
+                      {language === 'kz' && 'Сілтемелер'}
+                      {language === 'en' && 'Links'}
+                    </Label>
+
+                    <div className="space-y-3">
+                      <Input
+                        type="url"
+                        value={links[0]}
+                        onChange={(e) => setLinks((prev) => [e.target.value, prev[1], prev[2]])}
+                        placeholder="GitHub / Portfolio / LinkedIn"
+                        className="w-full"
+                      />
+                      <Input
+                        type="url"
+                        value={links[1]}
+                        onChange={(e) => setLinks((prev) => [prev[0], e.target.value, prev[2]])}
+                        placeholder={
+                          language === 'ru'
+                            ? 'Дополнительная ссылка'
+                            : language === 'kz'
+                            ? 'Қосымша сілтеме'
+                            : 'Additional link'
+                        }
+                        className="w-full"
+                      />
+                      <Input
+                        type="url"
+                        value={links[2]}
+                        onChange={(e) => setLinks((prev) => [prev[0], prev[1], e.target.value])}
+                        placeholder={
+                          language === 'ru'
+                            ? 'Дополнительная ссылка'
+                            : language === 'kz'
+                            ? 'Қосымша сілтеме'
+                            : 'Additional link'
+                        }
+                        className="w-full"
+                      />
+                    </div>
+
+                    <p className="text-xs text-gray-500 mt-2">
+                      {language === 'ru' &&
+                        'Можно указать GitHub, LinkedIn, портфолио, Behance и другие ссылки'}
+                      {language === 'kz' &&
+                        'GitHub, LinkedIn, портфолио, Behance және басқа сілтемелерді көрсетуге болады'}
+                      {language === 'en' &&
+                        'You can add GitHub, LinkedIn, portfolio, Behance and other links'}
+                    </p>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="message" className="text-gray-900 font-medium mb-2 block">
+                      {language === 'ru' && 'Сопроводительное письмо'}
+                      {language === 'kz' && 'Ілеспе хат'}
+                      {language === 'en' && 'Cover Letter'}
+                    </Label>
+                    <Textarea
+                      id="message"
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      placeholder={
+                        language === 'ru'
+                          ? 'Кратко расскажите о себе, опыте и почему хотите откликнуться'
+                          : language === 'kz'
+                          ? 'Өзіңіз, тәжірибеңіз және неге осы вакансияға қызыққаныңыз туралы қысқаша жазыңыз'
+                          : 'Briefly tell us about yourself, your experience, and why you are applying'
+                      }
+                      rows={5}
+                      className="w-full resize-none"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-gray-900 font-medium mb-2 block">
                       {language === 'ru' && 'Резюме'}
                       {language === 'kz' && 'Резюме'}
                       {language === 'en' && 'Resume'}
                       <span className="text-red-500 ml-1">*</span>
                     </Label>
+
                     {!resumeFile ? (
                       <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-[#1973AE] transition-colors bg-gray-50 hover:bg-gray-100">
                         <div className="flex flex-col items-center justify-center pt-5 pb-6">
@@ -305,8 +496,18 @@ export function JobDetailPage() {
                       <div className="flex items-center justify-between bg-gray-50 rounded-xl p-4 border border-gray-200">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-lg bg-[#1973AE]/10 flex items-center justify-center">
-                            <svg className="w-6 h-6 text-[#1973AE]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            <svg
+                              className="w-6 h-6 text-[#1973AE]"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                              />
                             </svg>
                           </div>
                           <div>
@@ -316,12 +517,7 @@ export function JobDetailPage() {
                             </p>
                           </div>
                         </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleRemoveFile}
-                        >
+                        <Button type="button" variant="ghost" size="sm" onClick={handleRemoveFile}>
                           <X className="w-5 h-5" />
                         </Button>
                       </div>
@@ -331,7 +527,7 @@ export function JobDetailPage() {
                   <div className="flex gap-3 pt-4">
                     <Button
                       type="submit"
-                      disabled={!name || !phone || !resumeFile || uploading}
+                      disabled={!name || !email || !phone || !resumeFile || uploading}
                       className="flex-1 bg-[#1973AE] text-white hover:bg-[#39D2ED]"
                     >
                       {uploading ? (
@@ -348,6 +544,7 @@ export function JobDetailPage() {
                         </>
                       )}
                     </Button>
+
                     <Button
                       type="button"
                       variant="outline"
@@ -376,9 +573,7 @@ export function JobDetailPage() {
                 {language === 'kz' && 'Вакансия туралы'}
                 {language === 'en' && 'About the role'}
               </h2>
-              <p className="text-lg text-gray-700 leading-relaxed">
-                {job.description[language].role}
-              </p>
+              <p className="text-lg text-gray-700 leading-relaxed">{job.description[language].role}</p>
             </div>
 
             {/* Tasks */}
@@ -486,7 +681,7 @@ export function JobDetailPage() {
                 <p className="text-white/90 mb-6">
                   {language === 'ru' && 'Отправьте заявку и мы свяжемся с вами'}
                   {language === 'kz' && 'Өтініш жіберіңіз және біз сізбен хабарласамыз'}
-                  {language === 'en' && 'Submit your application and we\'ll contact you'}
+                  {language === 'en' && "Submit your application and we'll contact you"}
                 </p>
                 <Button
                   size="lg"
