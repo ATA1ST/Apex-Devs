@@ -368,6 +368,27 @@ public class AdminController : ControllerBase
         return Ok(new { message = "Статус обновлён" });
     }
 
+    [HttpGet("applicants/{id}/resume")]
+    public async Task<IActionResult> DownloadApplicantResume(string id)
+    {
+        var applicant = await _db.JobApplications.Find(a => a.Id == id).FirstOrDefaultAsync();
+        if (applicant?.ResumeFile == null) return NotFound(new ApiError("Resume not found"));
+
+        var storedFileName = applicant.ResumeFile.StoredFileName;
+        if (string.IsNullOrWhiteSpace(storedFileName) && !string.IsNullOrWhiteSpace(applicant.ResumeFile.Url))
+            storedFileName = System.IO.Path.GetFileName(applicant.ResumeFile.Url);
+
+        if (string.IsNullOrWhiteSpace(storedFileName))
+            return NotFound(new ApiError("Resume link not found"));
+
+        var file = await _files.GetAsync(storedFileName, "resumes");
+        if (file == null) return NotFound(new ApiError("Resume file not found"));
+
+        var (stream, contentType) = file.Value;
+        var downloadName = string.IsNullOrWhiteSpace(applicant.ResumeFile.Name) ? storedFileName : applicant.ResumeFile.Name;
+        return File(stream, applicant.ResumeFile.Type ?? contentType, downloadName);
+    }
+
     [HttpDelete("applicants/{id}")]
     public async Task<IActionResult> DeleteApplicant(string id)
     {

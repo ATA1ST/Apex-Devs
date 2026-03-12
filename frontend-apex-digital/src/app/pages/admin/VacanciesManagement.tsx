@@ -467,13 +467,9 @@ export function VacanciesManagement() {
 
   const downloadResume = async (app: JobApplication) => {
     try {
-      if (!app.resumeUrl) {
-        throw new Error('Ссылка на резюме не найдена');
-      }
-
-      await downloadProtectedFile(app.resumeUrl, app.resumeFileName || 'resume');
+      await downloadProtectedFile(`/api/admin/applicants/${app.id}/resume`, app.resumeFileName || 'resume');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Ошибка скачивания резюме');
+      toast.error(error instanceof Error ? error.message : '???????????? ???????????????????? ????????????');
     }
   };
 

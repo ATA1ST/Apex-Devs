@@ -78,8 +78,12 @@ public static class MappingExtensions
         Name = a.Name, Email = a.Email, Phone = a.Phone,
         Links = a.Links, Message = a.Message,
         ResumeFile = a.ResumeFile == null ? null : new ResumeFileDto(
-            a.ResumeFile.Name, a.ResumeFile.Size, a.ResumeFile.Type,
-            $"{baseUrl}/api/files/resumes/{a.ResumeFile.StoredFileName}"),
+            a.ResumeFile.Name,
+            a.ResumeFile.Size,
+            a.ResumeFile.Type,
+            !string.IsNullOrWhiteSpace(a.ResumeFile.StoredFileName)
+                ? $"{baseUrl}/api/files/resumes/{a.ResumeFile.StoredFileName}"
+                : a.ResumeFile.Url),
         Status = a.Status, Note = a.Note, AppliedAt = a.AppliedAt,
     };
 

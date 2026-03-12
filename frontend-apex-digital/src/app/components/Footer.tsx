@@ -4,12 +4,59 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
+import { apiRequest } from '../config/api';
+import type { SiteSettingsDto } from '../types/api';
 import apexLogo from '../../assets/f7ddf9292a18e8b118f1c91f86089d79cd5e1586.png';
+
+const fallbackSettings: SiteSettingsDto = {
+  phone: '+7 747 226 68 85',
+  email: 'info@apexdigital.kz',
+  address: {
+    ru: '??????, ?????????',
+    kz: '??????, ?????????',
+    en: 'Astana, Kazakhstan',
+  },
+  instagram: '#',
+  linkedin: 'https://www.linkedin.com/company/apex-digital-kz',
+  telegram: 'https://t.me/+77472266885',
+  whatsapp: '',
+};
 
 export function Footer() {
   const { t, language } = useLanguage();
   const [ownerClickCount, setOwnerClickCount] = useState(0);
   const [showAdminDialog, setShowAdminDialog] = useState(false);
+  const [settings, setSettings] = useState<SiteSettingsDto>(fallbackSettings);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadSettings = async () => {
+      try {
+        const result = await apiRequest<SiteSettingsDto>('/api/settings', undefined, 'Failed to load footer settings');
+        if (!cancelled) {
+          setSettings({
+            ...fallbackSettings,
+            ...result,
+            address: {
+              ...fallbackSettings.address,
+              ...(result?.address || {}),
+            },
+          });
+        }
+      } catch {
+        if (!cancelled) {
+          setSettings(fallbackSettings);
+        }
+      }
+    };
+
+    void loadSettings();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const navLinks = [
     { label: t('nav.home'), path: '/' },
@@ -23,20 +70,19 @@ export function Footer() {
   const serviceLinks = [
     { label: t('services.web.title'), path: '/services' },
     { label: t('services.mobile.title'), path: '/services' },
-    { label: { ru: 'Backend Development', kz: 'Backend әзірлеу', en: 'Backend Development' }[language] || 'Backend', path: '/services' },
+    { label: { ru: 'Backend Development', kz: 'Backend ???????', en: 'Backend Development' }[language] || 'Backend', path: '/services' },
     { label: { ru: 'Machine Learning & AI', kz: 'Machine Learning & AI', en: 'Machine Learning & AI' }[language] || 'ML & AI', path: '/services' },
-    { label: { ru: 'UX/UI Design', kz: 'UX/UI Дизайн', en: 'UX/UI Design' }[language] || 'Design', path: '/services' },
-    { label: { ru: 'Интеграция 1С', kz: '1С Интеграциясы', en: '1C Integration' }[language] || '1C', path: '/services' },
+    { label: { ru: 'UX/UI Design', kz: 'UX/UI ??????', en: 'UX/UI Design' }[language] || 'Design', path: '/services' },
+    { label: { ru: '?????????? 1?', kz: '1? ????????????', en: '1C Integration' }[language] || '1C', path: '/services' },
     { label: t('services.staff.title'), path: '/services' },
   ];
 
   const socialLinks = [
-    { icon: Instagram, label: 'Instagram', href: '#' },
-    { icon: Linkedin, label: 'LinkedIn', href: 'https://www.linkedin.com/company/apex-digital-kz' },
-    { icon: Send, label: 'Telegram', href: 'https://t.me/+77472266885' },
+    { icon: Instagram, label: 'Instagram', href: settings.instagram || '#' },
+    { icon: Linkedin, label: 'LinkedIn', href: settings.linkedin || '#' },
+    { icon: Send, label: 'Telegram', href: settings.telegram || '#' },
   ];
 
-  // Secret admin access: 7 clicks on "Владельцам"
   const handleOwnerClick = () => {
     setOwnerClickCount((prev) => prev + 1);
   };
@@ -46,10 +92,11 @@ export function Footer() {
       setShowAdminDialog(true);
       setOwnerClickCount(0);
     }
-    // Reset counter after 3 seconds of inactivity
+
     const timer = setTimeout(() => {
       setOwnerClickCount(0);
     }, 3000);
+
     return () => clearTimeout(timer);
   }, [ownerClickCount]);
 
@@ -63,7 +110,6 @@ export function Footer() {
       <footer className="bg-gray-50 border-t">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            {/* Logo & Slogan */}
             <div className="space-y-4">
               <Link to="/" className="flex items-center space-x-2">
                 <img src={apexLogo} alt="Apex Digital Logo" className="h-8 w-8" />
@@ -72,44 +118,35 @@ export function Footer() {
               <p className="text-sm text-gray-600">{t('footer.slogan')}</p>
             </div>
 
-            {/* Navigation */}
             <div>
               <h3 className="font-semibold text-gray-900 mb-4">{t('footer.navigation')}</h3>
               <ul className="space-y-2">
                 {navLinks.map((link) => (
                   <li key={link.label}>
-                    <Link
-                      to={link.path}
-                      className="text-sm text-gray-600 hover:text-[#1973AE] transition-colors"
-                    >
+                    <Link to={link.path} className="text-sm text-gray-600 hover:text-[#1973AE] transition-colors">
                       {link.label}
                     </Link>
                   </li>
                 ))}
-                {/* Secret owner link */}
                 <li>
                   <button
                     onClick={handleOwnerClick}
                     className="text-sm text-gray-600 hover:text-[#1973AE] transition-colors font-normal"
                   >
-                    {language === 'ru' && 'Владельцам'}
-                    {language === 'kz' && 'Иелерге'}
+                    {language === 'ru' && '??????????'}
+                    {language === 'kz' && '???????'}
                     {language === 'en' && 'For Owners'}
                   </button>
                 </li>
               </ul>
             </div>
 
-            {/* Services */}
             <div>
               <h3 className="font-semibold text-gray-900 mb-4">{t('footer.services')}</h3>
               <ul className="space-y-2">
                 {serviceLinks.map((link) => (
                   <li key={link.label}>
-                    <Link
-                      to={link.path}
-                      className="text-sm text-gray-600 hover:text-[#1973AE] transition-colors"
-                    >
+                    <Link to={link.path} className="text-sm text-gray-600 hover:text-[#1973AE] transition-colors">
                       {link.label}
                     </Link>
                   </li>
@@ -117,22 +154,22 @@ export function Footer() {
               </ul>
             </div>
 
-            {/* Contacts */}
             <div>
               <h3 className="font-semibold text-gray-900 mb-4">{t('footer.contacts')}</h3>
               <ul className="space-y-2">
-                <li className="text-sm text-gray-600">{t('contact.address')}</li>
+                <li className="text-sm text-gray-600">{settings.address[language]}</li>
                 <li>
-                  <a
-                    href="tel:+77472266885"
-                    className="text-sm text-gray-600 hover:text-[#1973AE] transition-colors"
-                  >
-                    {t('contact.phone')}
+                  <a href={`tel:${settings.phone.replace(/\s+/g, '')}`} className="text-sm text-gray-600 hover:text-[#1973AE] transition-colors">
+                    {settings.phone}
+                  </a>
+                </li>
+                <li>
+                  <a href={`mailto:${settings.email}`} className="text-sm text-gray-600 hover:text-[#1973AE] transition-colors">
+                    {settings.email}
                   </a>
                 </li>
               </ul>
 
-              {/* Social Media */}
               <div className="flex items-center space-x-4 mt-4">
                 {socialLinks.map((social) => {
                   const Icon = social.icon;
@@ -151,7 +188,6 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Bottom Bar */}
           <div className="border-t mt-8 pt-8 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <p className="text-sm text-gray-600">{t('footer.copyright')}</p>
             <div className="flex space-x-6">
@@ -166,30 +202,29 @@ export function Footer() {
         </div>
       </footer>
 
-      {/* Admin Access Dialog */}
       <Dialog open={showAdminDialog} onOpenChange={setShowAdminDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {language === 'ru' && 'Доступ для владельцев'}
-              {language === 'kz' && 'Иелерге қол жетімділік'}
+              {language === 'ru' && '?????? ??? ??????????'}
+              {language === 'kz' && '??????? ??? ??????????'}
               {language === 'en' && 'Owner Access'}
             </DialogTitle>
             <DialogDescription>
-              {language === 'ru' && 'Вы собираетесь перейти на страницу входа в административную панель.'}
-              {language === 'kz' && 'Сіз әкімшілік панельге кіру бетіне өтуге дайынсыз.'}
+              {language === 'ru' && '?? ??????????? ??????? ?? ???????? ????? ? ???????????????? ??????.'}
+              {language === 'kz' && '??? ????????? ???????? ???? ?????? ????? ????????.'}
               {language === 'en' && 'You are about to proceed to the admin panel login page.'}
             </DialogDescription>
           </DialogHeader>
           <div className="flex space-x-4">
             <Button variant="outline" onClick={() => setShowAdminDialog(false)} className="flex-1">
-              {language === 'ru' && 'Отмена'}
-              {language === 'kz' && 'Болдырмау'}
+              {language === 'ru' && '??????'}
+              {language === 'kz' && '?????????'}
               {language === 'en' && 'Cancel'}
             </Button>
             <Button onClick={handleAdminAccess} className="flex-1 bg-[#1973AE] hover:bg-[#155a8a]">
-              {language === 'ru' && 'Перейти к входу'}
-              {language === 'kz' && 'Кіруге өту'}
+              {language === 'ru' && '??????? ? ?????'}
+              {language === 'kz' && '?????? ???'}
               {language === 'en' && 'Go to Login'}
             </Button>
           </div>
