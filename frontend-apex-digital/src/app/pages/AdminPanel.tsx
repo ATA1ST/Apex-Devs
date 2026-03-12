@@ -396,7 +396,7 @@ export function AdminPanel() {
                         <p className="text-gray-900">{submission.budget}</p>
                       </div>
                       <div>
-                        <span className="text-gray-500">Д��та:</span>
+                        <span className="text-gray-500">Дата:</span>
                         <p className="text-gray-900">{formatDateTime(submission.createdAt)}</p>
                       </div>
                     </div>

@@ -2,27 +2,66 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router';
 import { ArrowLeft, MapPin, Briefcase, Clock, Upload, X, CheckCircle } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { jobsStorage, Job } from '../data/jobsData';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { OrbitalVisual } from '../components/OrbitalVisual';
+import { toast } from 'sonner';
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, '') || 'http://localhost:5200';
+
+type Language = 'ru' | 'kz' | 'en';
+
+interface LocalizedText {
+  ru: string;
+  kz: string;
+  en: string;
+}
+
+interface JobDescriptionLocale {
+  role: string;
+  tasks: string[];
+  requirements: string[];
+  plusPoints: string[];
+  conditions: string[];
+}
+
+interface Job {
+  id: string;
+  slug: string;
+  title: LocalizedText;
+  shortDescription: LocalizedText;
+  postedDate: string;
+  department: string;
+  location: string;
+  employmentType: string;
+  status: string;
+  isVisible: boolean;
+  description: {
+    ru: JobDescriptionLocale;
+    kz: JobDescriptionLocale;
+    en: JobDescriptionLocale;
+  };
+  stack: string[];
+}
 
 export function JobDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { language } = useLanguage();
 
+  const currentLanguage = language as Language;
+
   const [job, setJob] = useState<Job | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+
   const [showApplicationForm, setShowApplicationForm] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  // Form state
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [resumeFile, setResumeFile] = useState<File | null>(null);
@@ -33,14 +72,44 @@ export function JobDetailPage() {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    if (!slug) return;
+    const loadJob = async () => {
+      if (!slug) return;
 
-    const foundJob = jobsStorage.getJobBySlug(slug);
-    if (foundJob) {
-      setJob(foundJob);
-      jobsStorage.incrementViews(foundJob.id);
-    }
-  }, [slug]);
+      try {
+        setIsLoading(true);
+        setLoadError('');
+
+        const response = await fetch(`${API_BASE_URL}/api/jobs/${slug}`);
+
+        if (!response.ok) {
+          throw new Error(
+            currentLanguage === 'ru'
+              ? 'Вакансия не найдена'
+              : currentLanguage === 'kz'
+              ? 'Вакансия табылмады'
+              : 'Job not found'
+          );
+        }
+
+        const data = await response.json();
+        setJob(data);
+      } catch (error) {
+        setLoadError(
+          error instanceof Error
+            ? error.message
+            : currentLanguage === 'ru'
+            ? 'Ошибка загрузки вакансии'
+            : currentLanguage === 'kz'
+            ? 'Вакансияны жүктеу қатесі'
+            : 'Failed to load job'
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadJob();
+  }, [slug, currentLanguage]);
 
   const getDepartmentLabel = (dept: string) => {
     const labels = {
@@ -50,7 +119,7 @@ export function JobDetailPage() {
       other: { ru: 'Другое', kz: 'Басқа', en: 'Other' },
     };
 
-    return labels[dept as keyof typeof labels]?.[language] || dept;
+    return labels[dept as keyof typeof labels]?.[currentLanguage] || dept;
   };
 
   const getLocationLabel = (loc: string) => {
@@ -60,7 +129,7 @@ export function JobDetailPage() {
       hybrid: { ru: 'Гибрид', kz: 'Гибрид', en: 'Hybrid' },
     };
 
-    return labels[loc as keyof typeof labels]?.[language] || loc;
+    return labels[loc as keyof typeof labels]?.[currentLanguage] || loc;
   };
 
   const getEmploymentLabel = (type: string) => {
@@ -70,7 +139,7 @@ export function JobDetailPage() {
       contract: { ru: 'Контракт', kz: 'Контракт', en: 'Contract' },
     };
 
-    return labels[type as keyof typeof labels]?.[language] || type;
+    return labels[type as keyof typeof labels]?.[currentLanguage] || type;
   };
 
   const formatDate = (dateString: string) => {
@@ -78,21 +147,17 @@ export function JobDetailPage() {
     const now = new Date();
     const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
 
-    if (diffDays === 0) return language === 'ru' ? 'Сегодня' : language === 'kz' ? 'Бүгін' : 'Today';
-    if (diffDays === 1) return language === 'ru' ? 'Вчера' : language === 'kz' ? 'Кеше' : 'Yesterday';
+    if (diffDays === 0) return currentLanguage === 'ru' ? 'Сегодня' : currentLanguage === 'kz' ? 'Бүгін' : 'Today';
+    if (diffDays === 1) return currentLanguage === 'ru' ? 'Вчера' : currentLanguage === 'kz' ? 'Кеше' : 'Yesterday';
     if (diffDays < 7) {
-      return `${diffDays} ${
-        language === 'ru' ? 'дн. назад' : language === 'kz' ? 'күн бұрын' : 'd ago'
-      }`;
+      return `${diffDays} ${currentLanguage === 'ru' ? 'дн. назад' : currentLanguage === 'kz' ? 'күн бұрын' : 'd ago'}`;
     }
     if (diffDays < 30) {
-      return `${Math.floor(diffDays / 7)} ${
-        language === 'ru' ? 'нед. назад' : language === 'kz' ? 'апта бұрын' : 'w ago'
-      }`;
+      return `${Math.floor(diffDays / 7)} ${currentLanguage === 'ru' ? 'нед. назад' : currentLanguage === 'kz' ? 'апта бұрын' : 'w ago'}`;
     }
 
     return date.toLocaleDateString(
-      language === 'ru' ? 'ru-RU' : language === 'kz' ? 'kk-KZ' : 'en-US'
+      currentLanguage === 'ru' ? 'ru-RU' : currentLanguage === 'kz' ? 'kk-KZ' : 'en-US'
     );
   };
 
@@ -105,10 +170,10 @@ export function JobDetailPage() {
     const maxSize = 10 * 1024 * 1024;
 
     if (!allowedExtensions.includes(extension)) {
-      alert(
-        language === 'ru'
+      toast.error(
+        currentLanguage === 'ru'
           ? 'Разрешены только файлы PDF, DOC, DOCX'
-          : language === 'kz'
+          : currentLanguage === 'kz'
           ? 'Тек PDF, DOC, DOCX файлдарына рұқсат етіледі'
           : 'Only PDF, DOC, DOCX files are allowed'
       );
@@ -117,10 +182,10 @@ export function JobDetailPage() {
     }
 
     if (file.size > maxSize) {
-      alert(
-        language === 'ru'
+      toast.error(
+        currentLanguage === 'ru'
           ? 'Максимальный размер файла 10 MB'
-          : language === 'kz'
+          : currentLanguage === 'kz'
           ? 'Файлдың максималды көлемі 10 MB'
           : 'Maximum file size is 10 MB'
       );
@@ -149,7 +214,7 @@ export function JobDetailPage() {
       formData.append('Email', email.trim());
       formData.append('Phone', phone.trim());
 
-      const filteredLinks = links.map((item) => item.trim()).filter(Boolean);
+      const filteredLinks = links.map((x) => x.trim()).filter(Boolean);
       formData.append('Links', filteredLinks.join('\n'));
       formData.append('Message', message.trim());
       formData.append('Resume', resumeFile);
@@ -161,9 +226,9 @@ export function JobDetailPage() {
 
       if (!response.ok) {
         let errorMessage =
-          language === 'ru'
+          currentLanguage === 'ru'
             ? 'Ошибка при отправке отклика'
-            : language === 'kz'
+            : currentLanguage === 'kz'
             ? 'Өтінішті жіберу қатесі'
             : 'Failed to submit application';
 
@@ -173,7 +238,7 @@ export function JobDetailPage() {
             errorMessage = errorData.message;
           }
         } catch {
-          // ignore parse error
+          //
         }
 
         throw new Error(errorMessage);
@@ -188,13 +253,21 @@ export function JobDetailPage() {
       setLinks(['', '', '']);
       setMessage('');
       setResumeFile(null);
+
+      toast.success(
+        currentLanguage === 'ru'
+          ? 'Отклик успешно отправлен'
+          : currentLanguage === 'kz'
+          ? 'Өтініш сәтті жіберілді'
+          : 'Application submitted successfully'
+      );
     } catch (error) {
-      alert(
+      toast.error(
         error instanceof Error
           ? error.message
-          : language === 'ru'
+          : currentLanguage === 'ru'
           ? 'Не удалось отправить отклик'
-          : language === 'kz'
+          : currentLanguage === 'kz'
           ? 'Өтінішті жіберу мүмкін болмады'
           : 'Failed to submit application'
       );
@@ -203,28 +276,44 @@ export function JobDetailPage() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="w-full min-h-screen flex items-center justify-center">
+        <div className="text-center text-gray-600">
+          {currentLanguage === 'ru' && 'Загрузка вакансии...'}
+          {currentLanguage === 'kz' && 'Вакансия жүктелуде...'}
+          {currentLanguage === 'en' && 'Loading job...'}
+        </div>
+      </div>
+    );
+  }
+
   if (!job) {
     return (
       <div className="w-full min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">
-            {language === 'ru' && 'Вакансия не найдена'}
-            {language === 'kz' && 'Вакансия табылмады'}
-            {language === 'en' && 'Job not found'}
+            {loadError ||
+              (currentLanguage === 'ru'
+                ? 'Вакансия не найдена'
+                : currentLanguage === 'kz'
+                ? 'Вакансия табылмады'
+                : 'Job not found')}
           </h2>
           <Button onClick={() => navigate('/careers')}>
-            {language === 'ru' && 'Назад к вакансиям'}
-            {language === 'kz' && 'Вакансияларға оралу'}
-            {language === 'en' && 'Back to careers'}
+            {currentLanguage === 'ru' && 'Назад к вакансиям'}
+            {currentLanguage === 'kz' && 'Вакансияларға оралу'}
+            {currentLanguage === 'en' && 'Back to careers'}
           </Button>
         </div>
       </div>
     );
   }
 
+  const desc = job.description[currentLanguage];
+
   return (
     <div className="w-full min-h-screen bg-gradient-to-b from-[#D1EDF4]/10 to-white">
-      {/* Header */}
       <section className="relative py-12 border-b border-gray-200">
         <div className="absolute inset-0 opacity-10">
           <OrbitalVisual variant="careers" />
@@ -232,20 +321,16 @@ export function JobDetailPage() {
 
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="max-w-4xl mx-auto">
-            <Link
-              to="/careers"
-              className="inline-flex items-center text-[#1973AE] hover:text-[#39D2ED] mb-6 transition-colors"
-            >
+            <Link to="/careers" className="inline-flex items-center text-[#1973AE] hover:text-[#39D2ED] mb-6 transition-colors">
               <ArrowLeft className="w-5 h-5 mr-2" />
-              {language === 'ru' && 'Все вакансии'}
-              {language === 'kz' && 'Барлық вакансиялар'}
-              {language === 'en' && 'All jobs'}
+              {currentLanguage === 'ru' && 'Все вакансии'}
+              {currentLanguage === 'kz' && 'Барлық вакансиялар'}
+              {currentLanguage === 'en' && 'All jobs'}
             </Link>
 
             <div className="flex items-start justify-between gap-6 mb-6">
               <div>
-                <h1 className="text-4xl font-bold text-gray-900 mb-4">{job.title[language]}</h1>
-
+                <h1 className="text-4xl font-bold text-gray-900 mb-4">{job.title[currentLanguage]}</h1>
                 <div className="flex flex-wrap items-center gap-4 text-gray-600 mb-4">
                   <span className="flex items-center gap-2">
                     <Briefcase className="w-5 h-5" />
@@ -260,12 +345,11 @@ export function JobDetailPage() {
                     {formatDate(job.postedDate)}
                   </span>
                 </div>
-
                 <div className="flex items-center gap-3">
                   <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                    {language === 'ru' && 'Открыта'}
-                    {language === 'kz' && 'Ашық'}
-                    {language === 'en' && 'Open'}
+                    {currentLanguage === 'ru' && 'Открыта'}
+                    {currentLanguage === 'kz' && 'Ашық'}
+                    {currentLanguage === 'en' && 'Open'}
                   </Badge>
                   <Badge variant="secondary">{getEmploymentLabel(job.employmentType)}</Badge>
                 </div>
@@ -278,9 +362,9 @@ export function JobDetailPage() {
                 onClick={() => setShowApplicationForm(true)}
                 className="bg-[#1973AE] text-white hover:bg-[#39D2ED]"
               >
-                {language === 'ru' && 'Откликнуться'}
-                {language === 'kz' && 'Үміткер болу'}
-                {language === 'en' && 'Apply'}
+                {currentLanguage === 'ru' && 'Откликнуться'}
+                {currentLanguage === 'kz' && 'Үміткер болу'}
+                {currentLanguage === 'en' && 'Apply'}
               </Button>
             )}
 
@@ -289,17 +373,14 @@ export function JobDetailPage() {
                 <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0" />
                 <div>
                   <h3 className="font-semibold text-green-900 mb-1">
-                    {language === 'ru' && 'Отклик отправлен!'}
-                    {language === 'kz' && 'Өтініш жіберілді!'}
-                    {language === 'en' && 'Application submitted!'}
+                    {currentLanguage === 'ru' && 'Отклик отправлен!'}
+                    {currentLanguage === 'kz' && 'Өтініш жіберілді!'}
+                    {currentLanguage === 'en' && 'Application submitted!'}
                   </h3>
                   <p className="text-green-700">
-                    {language === 'ru' &&
-                      'Мы рассмотрим вашу заявку и свяжемся с вами в ближайшее время.'}
-                    {language === 'kz' &&
-                      'Біз сіздің өтінішіңізді қарастырамыз және жақын арада хабарласамыз.'}
-                    {language === 'en' &&
-                      'We will review your application and contact you soon.'}
+                    {currentLanguage === 'ru' && 'Мы рассмотрим вашу заявку и свяжемся с вами в ближайшее время.'}
+                    {currentLanguage === 'kz' && 'Біз сіздің өтінішіңізді қарастырамыз және жақын арада хабарласамыз.'}
+                    {currentLanguage === 'en' && 'We will review your application and contact you soon.'}
                   </p>
                 </div>
               </div>
@@ -308,7 +389,6 @@ export function JobDetailPage() {
         </div>
       </section>
 
-      {/* Application Form */}
       {showApplicationForm && (
         <section className="py-12 bg-white border-b border-gray-200">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -316,9 +396,9 @@ export function JobDetailPage() {
               <div className="bg-gradient-to-br from-[#D1EDF4]/20 to-white rounded-2xl p-8 border border-gray-200">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-2xl font-bold text-gray-900">
-                    {language === 'ru' && 'Форма отклика'}
-                    {language === 'kz' && 'Өтініш формасы'}
-                    {language === 'en' && 'Application Form'}
+                    {currentLanguage === 'ru' && 'Форма отклика'}
+                    {currentLanguage === 'kz' && 'Өтініш формасы'}
+                    {currentLanguage === 'en' && 'Application Form'}
                   </h2>
                   <Button variant="ghost" size="sm" onClick={() => setShowApplicationForm(false)}>
                     <X className="w-5 h-5" />
@@ -328,9 +408,9 @@ export function JobDetailPage() {
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div>
                     <Label htmlFor="name" className="text-gray-900 font-medium mb-2 block">
-                      {language === 'ru' && 'Имя'}
-                      {language === 'kz' && 'Аты'}
-                      {language === 'en' && 'Name'}
+                      {currentLanguage === 'ru' && 'Имя'}
+                      {currentLanguage === 'kz' && 'Аты'}
+                      {currentLanguage === 'en' && 'Name'}
                       <span className="text-red-500 ml-1">*</span>
                     </Label>
                     <Input
@@ -339,9 +419,9 @@ export function JobDetailPage() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder={
-                        language === 'ru'
+                        currentLanguage === 'ru'
                           ? 'Введите ваше имя'
-                          : language === 'kz'
+                          : currentLanguage === 'kz'
                           ? 'Атыңызды енгізіңіз'
                           : 'Enter your name'
                       }
@@ -361,9 +441,9 @@ export function JobDetailPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder={
-                        language === 'ru'
+                        currentLanguage === 'ru'
                           ? 'Введите ваш email'
-                          : language === 'kz'
+                          : currentLanguage === 'kz'
                           ? 'Email енгізіңіз'
                           : 'Enter your email'
                       }
@@ -374,9 +454,9 @@ export function JobDetailPage() {
 
                   <div>
                     <Label htmlFor="phone" className="text-gray-900 font-medium mb-2 block">
-                      {language === 'ru' && 'Телефон'}
-                      {language === 'kz' && 'Телефон'}
-                      {language === 'en' && 'Phone'}
+                      {currentLanguage === 'ru' && 'Телефон'}
+                      {currentLanguage === 'kz' && 'Телефон'}
+                      {currentLanguage === 'en' && 'Phone'}
                       <span className="text-red-500 ml-1">*</span>
                     </Label>
                     <Input
@@ -392,9 +472,9 @@ export function JobDetailPage() {
 
                   <div>
                     <Label className="text-gray-900 font-medium mb-2 block">
-                      {language === 'ru' && 'Ссылки'}
-                      {language === 'kz' && 'Сілтемелер'}
-                      {language === 'en' && 'Links'}
+                      {currentLanguage === 'ru' && 'Ссылки'}
+                      {currentLanguage === 'kz' && 'Сілтемелер'}
+                      {currentLanguage === 'en' && 'Links'}
                     </Label>
 
                     <div className="space-y-3">
@@ -410,9 +490,9 @@ export function JobDetailPage() {
                         value={links[1]}
                         onChange={(e) => setLinks((prev) => [prev[0], e.target.value, prev[2]])}
                         placeholder={
-                          language === 'ru'
+                          currentLanguage === 'ru'
                             ? 'Дополнительная ссылка'
-                            : language === 'kz'
+                            : currentLanguage === 'kz'
                             ? 'Қосымша сілтеме'
                             : 'Additional link'
                         }
@@ -423,40 +503,31 @@ export function JobDetailPage() {
                         value={links[2]}
                         onChange={(e) => setLinks((prev) => [prev[0], prev[1], e.target.value])}
                         placeholder={
-                          language === 'ru'
+                          currentLanguage === 'ru'
                             ? 'Дополнительная ссылка'
-                            : language === 'kz'
+                            : currentLanguage === 'kz'
                             ? 'Қосымша сілтеме'
                             : 'Additional link'
                         }
                         className="w-full"
                       />
                     </div>
-
-                    <p className="text-xs text-gray-500 mt-2">
-                      {language === 'ru' &&
-                        'Можно указать GitHub, LinkedIn, портфолио, Behance и другие ссылки'}
-                      {language === 'kz' &&
-                        'GitHub, LinkedIn, портфолио, Behance және басқа сілтемелерді көрсетуге болады'}
-                      {language === 'en' &&
-                        'You can add GitHub, LinkedIn, portfolio, Behance and other links'}
-                    </p>
                   </div>
 
                   <div>
                     <Label htmlFor="message" className="text-gray-900 font-medium mb-2 block">
-                      {language === 'ru' && 'Сопроводительное письмо'}
-                      {language === 'kz' && 'Ілеспе хат'}
-                      {language === 'en' && 'Cover Letter'}
+                      {currentLanguage === 'ru' && 'Сопроводительное письмо'}
+                      {currentLanguage === 'kz' && 'Ілеспе хат'}
+                      {currentLanguage === 'en' && 'Cover Letter'}
                     </Label>
                     <Textarea
                       id="message"
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                       placeholder={
-                        language === 'ru'
+                        currentLanguage === 'ru'
                           ? 'Кратко расскажите о себе, опыте и почему хотите откликнуться'
-                          : language === 'kz'
+                          : currentLanguage === 'kz'
                           ? 'Өзіңіз, тәжірибеңіз және неге осы вакансияға қызыққаныңыз туралы қысқаша жазыңыз'
                           : 'Briefly tell us about yourself, your experience, and why you are applying'
                       }
@@ -467,9 +538,9 @@ export function JobDetailPage() {
 
                   <div>
                     <Label className="text-gray-900 font-medium mb-2 block">
-                      {language === 'ru' && 'Резюме'}
-                      {language === 'kz' && 'Резюме'}
-                      {language === 'en' && 'Resume'}
+                      {currentLanguage === 'ru' && 'Резюме'}
+                      {currentLanguage === 'kz' && 'Резюме'}
+                      {currentLanguage === 'en' && 'Resume'}
                       <span className="text-red-500 ml-1">*</span>
                     </Label>
 
@@ -478,9 +549,9 @@ export function JobDetailPage() {
                         <div className="flex flex-col items-center justify-center pt-5 pb-6">
                           <Upload className="w-8 h-8 mb-2 text-gray-500" />
                           <p className="text-sm text-gray-600">
-                            {language === 'ru' && 'Нажмите для загрузки'}
-                            {language === 'kz' && 'Жүктеу үшін басыңыз'}
-                            {language === 'en' && 'Click to upload'}
+                            {currentLanguage === 'ru' && 'Нажмите для загрузки'}
+                            {currentLanguage === 'kz' && 'Жүктеу үшін басыңыз'}
+                            {currentLanguage === 'en' && 'Click to upload'}
                           </p>
                           <p className="text-xs text-gray-500 mt-1">PDF, DOC, DOCX (max 10MB)</p>
                         </div>
@@ -496,12 +567,7 @@ export function JobDetailPage() {
                       <div className="flex items-center justify-between bg-gray-50 rounded-xl p-4 border border-gray-200">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-lg bg-[#1973AE]/10 flex items-center justify-center">
-                            <svg
-                              className="w-6 h-6 text-[#1973AE]"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
+                            <svg className="w-6 h-6 text-[#1973AE]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
@@ -532,27 +598,22 @@ export function JobDetailPage() {
                     >
                       {uploading ? (
                         <>
-                          {language === 'ru' && 'Отправка...'}
-                          {language === 'kz' && 'Жіберілуде...'}
-                          {language === 'en' && 'Submitting...'}
+                          {currentLanguage === 'ru' && 'Отправка...'}
+                          {currentLanguage === 'kz' && 'Жіберілуде...'}
+                          {currentLanguage === 'en' && 'Submitting...'}
                         </>
                       ) : (
                         <>
-                          {language === 'ru' && 'Отправить'}
-                          {language === 'kz' && 'Жіберу'}
-                          {language === 'en' && 'Submit'}
+                          {currentLanguage === 'ru' && 'Отправить'}
+                          {currentLanguage === 'kz' && 'Жіберу'}
+                          {currentLanguage === 'en' && 'Submit'}
                         </>
                       )}
                     </Button>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setShowApplicationForm(false)}
-                    >
-                      {language === 'ru' && 'Отмена'}
-                      {language === 'kz' && 'Болдырмау'}
-                      {language === 'en' && 'Cancel'}
+                    <Button type="button" variant="outline" onClick={() => setShowApplicationForm(false)}>
+                      {currentLanguage === 'ru' && 'Отмена'}
+                      {currentLanguage === 'kz' && 'Болдырмау'}
+                      {currentLanguage === 'en' && 'Cancel'}
                     </Button>
                   </div>
                 </form>
@@ -562,103 +623,96 @@ export function JobDetailPage() {
         </section>
       )}
 
-      {/* Job Details */}
       <section className="py-12">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto space-y-12">
-            {/* Description */}
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                {language === 'ru' && 'О вакансии'}
-                {language === 'kz' && 'Вакансия туралы'}
-                {language === 'en' && 'About the role'}
+                {currentLanguage === 'ru' && 'О вакансии'}
+                {currentLanguage === 'kz' && 'Вакансия туралы'}
+                {currentLanguage === 'en' && 'About the role'}
               </h2>
-              <p className="text-lg text-gray-700 leading-relaxed">{job.description[language].role}</p>
+              <p className="text-lg text-gray-700 leading-relaxed">{desc.role}</p>
             </div>
 
-            {/* Tasks */}
-            {job.description[language].tasks.length > 0 && (
+            {desc.tasks?.length > 0 && (
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                  {language === 'ru' && 'Задачи'}
-                  {language === 'kz' && 'Міндеттер'}
-                  {language === 'en' && 'Tasks'}
+                  {currentLanguage === 'ru' && 'Задачи'}
+                  {currentLanguage === 'kz' && 'Міндеттер'}
+                  {currentLanguage === 'en' && 'Tasks'}
                 </h2>
                 <ul className="space-y-3">
-                  {job.description[language].tasks.map((task, idx) => (
-                    <li key={idx} className="flex items-start gap-3">
-                      <span className="w-2 h-2 rounded-full bg-[#1973AE] mt-2 flex-shrink-0" />
-                      <span className="text-gray-700">{task}</span>
+                  {desc.tasks.map((item, index) => (
+                    <li key={index} className="text-gray-700 flex items-start gap-3">
+                      <span className="mt-2 h-2 w-2 rounded-full bg-[#1973AE]" />
+                      <span>{item}</span>
                     </li>
                   ))}
                 </ul>
               </div>
             )}
 
-            {/* Requirements */}
-            {job.description[language].requirements.length > 0 && (
+            {desc.requirements?.length > 0 && (
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                  {language === 'ru' && 'Требования'}
-                  {language === 'kz' && 'Талаптар'}
-                  {language === 'en' && 'Requirements'}
+                  {currentLanguage === 'ru' && 'Требования'}
+                  {currentLanguage === 'kz' && 'Талаптар'}
+                  {currentLanguage === 'en' && 'Requirements'}
                 </h2>
                 <ul className="space-y-3">
-                  {job.description[language].requirements.map((req, idx) => (
-                    <li key={idx} className="flex items-start gap-3">
-                      <span className="w-2 h-2 rounded-full bg-[#39D2ED] mt-2 flex-shrink-0" />
-                      <span className="text-gray-700">{req}</span>
+                  {desc.requirements.map((item, index) => (
+                    <li key={index} className="text-gray-700 flex items-start gap-3">
+                      <span className="mt-2 h-2 w-2 rounded-full bg-[#1973AE]" />
+                      <span>{item}</span>
                     </li>
                   ))}
                 </ul>
               </div>
             )}
 
-            {/* Plus Points */}
-            {job.description[language].plusPoints.length > 0 && (
+            {desc.plusPoints?.length > 0 && (
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                  {language === 'ru' && 'Будет плюсом'}
-                  {language === 'kz' && 'Артықшылық болады'}
-                  {language === 'en' && 'Nice to have'}
+                  {currentLanguage === 'ru' && 'Будет плюсом'}
+                  {currentLanguage === 'kz' && 'Артықшылық болады'}
+                  {currentLanguage === 'en' && 'Nice to have'}
                 </h2>
                 <ul className="space-y-3">
-                  {job.description[language].plusPoints.map((plus, idx) => (
-                    <li key={idx} className="flex items-start gap-3">
-                      <span className="text-green-500 mt-1 flex-shrink-0">+</span>
-                      <span className="text-gray-700">{plus}</span>
+                  {desc.plusPoints.map((item, index) => (
+                    <li key={index} className="text-gray-700 flex items-start gap-3">
+                      <span className="mt-2 h-2 w-2 rounded-full bg-[#1973AE]" />
+                      <span>{item}</span>
                     </li>
                   ))}
                 </ul>
               </div>
             )}
 
-            {/* Conditions */}
-            {job.description[language].conditions.length > 0 && (
+            {desc.conditions?.length > 0 && (
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                  {language === 'ru' && 'Условия'}
-                  {language === 'kz' && 'Жағдайлар'}
-                  {language === 'en' && 'What we offer'}
+                  {currentLanguage === 'ru' && 'Условия'}
+                  {currentLanguage === 'kz' && 'Шарттар'}
+                  {currentLanguage === 'en' && 'Conditions'}
                 </h2>
                 <ul className="space-y-3">
-                  {job.description[language].conditions.map((cond, idx) => (
-                    <li key={idx} className="flex items-start gap-3">
-                      <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                      <span className="text-gray-700">{cond}</span>
+                  {desc.conditions.map((item, index) => (
+                    <li key={index} className="text-gray-700 flex items-start gap-3">
+                      <span className="mt-2 h-2 w-2 rounded-full bg-[#1973AE]" />
+                      <span>{item}</span>
                     </li>
                   ))}
                 </ul>
               </div>
             )}
 
-            {/* Stack */}
             {job.stack && job.stack.length > 0 && (
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                  {language === 'ru' && 'Технологии'}
-                  {language === 'kz' && 'Технологиялар'}
-                  {language === 'en' && 'Technologies'}
+                  {currentLanguage === 'ru' && 'Технологии'}
+                  {currentLanguage === 'kz' && 'Технологиялар'}
+                  {currentLanguage === 'en' && 'Technologies'}
                 </h2>
                 <div className="flex flex-wrap gap-2">
                   {job.stack.map((tech, idx) => (
@@ -670,27 +724,26 @@ export function JobDetailPage() {
               </div>
             )}
 
-            {/* CTA */}
             {!showApplicationForm && !submitted && (
               <div className="bg-gradient-to-br from-[#1973AE] to-[#39D2ED] rounded-2xl p-8 text-center">
                 <h3 className="text-2xl font-bold text-white mb-4">
-                  {language === 'ru' && 'Готовы присоединиться к команде?'}
-                  {language === 'kz' && 'Командаға қосылуға дайынсыз ба?'}
-                  {language === 'en' && 'Ready to join the team?'}
+                  {currentLanguage === 'ru' && 'Готовы присоединиться к команде?'}
+                  {currentLanguage === 'kz' && 'Командаға қосылуға дайынсыз ба?'}
+                  {currentLanguage === 'en' && 'Ready to join the team?'}
                 </h3>
                 <p className="text-white/90 mb-6">
-                  {language === 'ru' && 'Отправьте заявку и мы свяжемся с вами'}
-                  {language === 'kz' && 'Өтініш жіберіңіз және біз сізбен хабарласамыз'}
-                  {language === 'en' && "Submit your application and we'll contact you"}
+                  {currentLanguage === 'ru' && 'Отправьте заявку и мы свяжемся с вами'}
+                  {currentLanguage === 'kz' && 'Өтініш жіберіңіз және біз сізбен хабарласамыз'}
+                  {currentLanguage === 'en' && "Submit your application and we'll contact you"}
                 </p>
                 <Button
                   size="lg"
                   onClick={() => setShowApplicationForm(true)}
                   className="bg-white text-[#1973AE] hover:bg-gray-100"
                 >
-                  {language === 'ru' && 'Откликнуться'}
-                  {language === 'kz' && 'Үміткер болу'}
-                  {language === 'en' && 'Apply Now'}
+                  {currentLanguage === 'ru' && 'Откликнуться'}
+                  {currentLanguage === 'kz' && 'Үміткер болу'}
+                  {currentLanguage === 'en' && 'Apply Now'}
                 </Button>
               </div>
             )}
