@@ -12,8 +12,8 @@ const fallbackSettings: SiteSettingsDto = {
   phone: '+7 747 226 68 85',
   email: 'info@apexdigital.kz',
   address: {
-    ru: '??????, ?????????',
-    kz: '??????, ?????????',
+    ru: 'Астана, Казахстан',
+    kz: 'Астана, Қазақстан',
     en: 'Astana, Kazakhstan',
   },
   instagram: '#',
@@ -70,10 +70,10 @@ export function Footer() {
   const serviceLinks = [
     { label: t('services.web.title'), path: '/services' },
     { label: t('services.mobile.title'), path: '/services' },
-    { label: { ru: 'Backend Development', kz: 'Backend ???????', en: 'Backend Development' }[language] || 'Backend', path: '/services' },
+    { label: { ru: 'Backend Development', kz: 'Backend даму', en: 'Backend Development' }[language] || 'Backend', path: '/services' },
     { label: { ru: 'Machine Learning & AI', kz: 'Machine Learning & AI', en: 'Machine Learning & AI' }[language] || 'ML & AI', path: '/services' },
-    { label: { ru: 'UX/UI Design', kz: 'UX/UI ??????', en: 'UX/UI Design' }[language] || 'Design', path: '/services' },
-    { label: { ru: '?????????? 1?', kz: '1? ????????????', en: '1C Integration' }[language] || '1C', path: '/services' },
+    { label: { ru: 'UX/UI Design', kz: 'UX/UI дизайн', en: 'UX/UI Design' }[language] || 'Design', path: '/services' },
+    { label: { ru: 'Интеграция 1C', kz: '1C Интеграция', en: '1C Integration' }[language] || '1C', path: '/services' },
     { label: t('services.staff.title'), path: '/services' },
   ];
 
@@ -133,8 +133,8 @@ export function Footer() {
                     onClick={handleOwnerClick}
                     className="text-sm text-gray-600 hover:text-[#1973AE] transition-colors font-normal"
                   >
-                    {language === 'ru' && '??????????'}
-                    {language === 'kz' && '???????'}
+                    {language === 'ru' && 'Для Владельцев'}
+                    {language === 'kz' && 'Егерлер үшін'}
                     {language === 'en' && 'For Owners'}
                   </button>
                 </li>
@@ -206,25 +206,25 @@ export function Footer() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {language === 'ru' && '?????? ??? ??????????'}
-              {language === 'kz' && '??????? ??? ??????????'}
+              {language === 'ru' && 'Для Владельцев'}
+              {language === 'kz' && 'Егерлер үшін'}
               {language === 'en' && 'Owner Access'}
             </DialogTitle>
             <DialogDescription>
-              {language === 'ru' && '?? ??????????? ??????? ?? ???????? ????? ? ???????????????? ??????.'}
-              {language === 'kz' && '??? ????????? ???????? ???? ?????? ????? ????????.'}
+              {language === 'ru' && 'Вы будете перенаправлены на страницу входа в панель администратора.'}
+              {language === 'kz' && 'Сіз әкімші панеліне кіру парағына ауысып жатырсыз.'}
               {language === 'en' && 'You are about to proceed to the admin panel login page.'}
             </DialogDescription>
           </DialogHeader>
           <div className="flex space-x-4">
             <Button variant="outline" onClick={() => setShowAdminDialog(false)} className="flex-1">
-              {language === 'ru' && '??????'}
-              {language === 'kz' && '?????????'}
+              {language === 'ru' && 'Отмена'}
+              {language === 'kz' && 'Бас тарту'}
               {language === 'en' && 'Cancel'}
             </Button>
             <Button onClick={handleAdminAccess} className="flex-1 bg-[#1973AE] hover:bg-[#155a8a]">
-              {language === 'ru' && '??????? ? ?????'}
-              {language === 'kz' && '?????? ???'}
+              {language === 'ru' && 'Перейти к входу'}
+              {language === 'kz' && 'Кіруге өту'}
               {language === 'en' && 'Go to Login'}
             </Button>
           </div>
