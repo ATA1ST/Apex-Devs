@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { 
-  LogOut, 
-  FolderOpen, 
-  MessageSquare, 
-  Settings, 
+import {
+  LogOut,
+  FolderOpen,
+  MessageSquare,
+  Settings,
   Briefcase,
   Plus,
   Edit,
@@ -14,65 +14,93 @@ import {
   Check,
   X,
   Upload,
-  Link as LinkIcon,
-  Download,
-  UsersIcon
+  Paperclip,
+  Loader2
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Badge } from '../components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../components/ui/dialog';
-import { clearSession } from '../config/auth';
-import { mockProjects } from '../data/mockData';
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog';
+import { clearSession, authFetch, downloadProtectedFile } from '../config/auth';
 import { toast } from 'sonner';
 import { VacanciesManagement } from './admin/VacanciesManagement';
+
+interface AttachmentInfoDto {
+  name: string;
+  size: number;
+  url: string;
+}
 
 interface Submission {
   id: string;
   name: string;
-  email: string;
-  company: string;
-  service: string;
-  budget: string;
-  description: string;
-  files: string[];
+  email?: string | null;
+  company?: string | null;
+  phone?: string | null;
+  service?: string | null;
+  budget?: string | null;
+  timeline?: string | null;
+  description?: string | null;
+  attachments: AttachmentInfoDto[];
   status: 'new' | 'processed';
+  processed: boolean;
+  adminNote?: string | null;
   createdAt: string;
+}
+
+interface LocalizedStringDto {
+  ru: string;
+  kz: string;
+  en: string;
+}
+
+interface AdminProjectDto {
+  id: string;
+  slug: string;
+  title: LocalizedStringDto;
+  description: LocalizedStringDto;
+  fullDescription?: LocalizedStringDto | null;
+  challenge?: LocalizedStringDto | null;
+  solution?: LocalizedStringDto | null;
+  features?: {
+    ru: string[];
+    kz: string[];
+    en: string[];
+  } | null;
+  category: string;
+  status: string;
+  tags: string[];
+  image: string;
+  gallery?: string[] | null;
+  goals?: {
+    ru: string[];
+    kz: string[];
+    en: string[];
+  } | null;
+  stack?: string[] | null;
+  results?: LocalizedStringDto | null;
+  isVisible: boolean;
+  timeline?: LocalizedStringDto | null;
 }
 
 export function AdminPanel() {
   const navigate = useNavigate();
-  const [projects, setProjects] = useState(mockProjects);
-  const [submissions, setSubmissions] = useState<Submission[]>([
-    {
-      id: '1',
-      name: 'Алексей Петров',
-      email: 'alex@example.com',
-      company: 'Tech Corp',
-      service: 'Web Development',
-      budget: '$50k - $100k',
-      description: 'Нужен корпоративный сайт с интеграцией CRM',
-      files: ['brief.pdf', 'mockups.zip'],
-      status: 'new',
-      createdAt: '2026-03-07T14:30:00',
-    },
-    {
-      id: '2',
-      name: 'Мария Иванова',
-      email: 'maria@startup.kz',
-      company: 'StartupKZ',
-      service: 'Mobile Development',
-      budget: '$30k - $50k',
-      description: 'MVP мобильного приложения для iOS и Android',
-      files: [],
-      status: 'processed',
-      createdAt: '2026-03-05T10:15:00',
-    },
-  ]);
+  const [projects, setProjects] = useState<AdminProjectDto[]>([]);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true);
+  const [savingProject, setSavingProject] = useState(false);
+  const [projectActionId, setProjectActionId] = useState<string | null>(null);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(true);
+  const [updatingSubmissionId, setUpdatingSubmissionId] = useState<string | null>(null);
 
   const [editingProject, setEditingProject] = useState<string | null>(null);
   const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
@@ -96,35 +124,189 @@ export function AdminPanel() {
     toast.success('Вы вышли из системы');
   };
 
-  const toggleProjectPublish = (projectId: string) => {
-    setProjects(projects.map(p => 
-      p.id === projectId 
-        ? { ...p, isVisible: !p.isVisible }
-        : p
-    ));
-    const project = projects.find(p => p.id === projectId);
-    toast.success(project?.isVisible === false ? 'Проект теперь видим' : 'Проект скрыт от клиентов');
+  const serviceLabelMap: Record<string, string> = {
+    website: 'Веб-сайт',
+    web: 'Веб-сайт',
+    mobile: 'Мобильное приложение',
+    backend: 'Backend-разработка',
+    uxui: 'UX/UI дизайн',
+    ai: 'AI / ML',
+    outstaff: 'Аутстаффинг',
   };
 
-  const deleteProject = (projectId: string) => {
-    if (confirm('Вы уверены, что хотите удалить этот проект?')) {
-      setProjects(projects.filter(p => p.id !== projectId));
-      toast.success('Проект удалён');
+  const budgetLabelMap: Record<string, string> = {
+    under1m: 'До 1 000 000 ₸',
+    small: 'До 1 000 000 ₸',
+    medium: '1–3 млн ₸',
+    large: '3–10 млн ₸',
+    enterprise: '10+ млн ₸',
+  };
+
+  const timelineLabelMap: Record<string, string> = {
+    asap: 'Как можно скорее',
+    week: 'До 1 недели',
+    twoweeks: '2 недели и больше',
+    month: 'До 1 месяца',
+    flexible: 'Гибко',
+  };
+
+  const getLabel = (value?: string | null, map?: Record<string, string>) => {
+    if (!value) return '—';
+    return map?.[value] || value;
+  };
+
+  const loadProjects = async () => {
+    try {
+      setIsLoadingProjects(true);
+
+      const response = await authFetch('/api/admin/projects?page=1&pageSize=100');
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(result?.message || result?.Message || 'Не удалось загрузить проекты');
+      }
+
+      setProjects(Array.isArray(result?.items) ? result.items : []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Не удалось загрузить проекты';
+      toast.error(message);
+
+      if (message.includes('Сессия истекла')) {
+        navigate('/admin', { replace: true });
+      }
+    } finally {
+      setIsLoadingProjects(false);
     }
   };
 
-  const toggleSubmissionStatus = (submissionId: string) => {
-    setSubmissions(submissions.map(s =>
-      s.id === submissionId
-        ? { ...s, status: s.status === 'new' ? 'processed' : 'new' }
-        : s
-    ));
-    toast.success('Статус заявки обновлён');
+  const loadSubmissions = async () => {
+    try {
+      setIsLoadingSubmissions(true);
+
+      const response = await authFetch('/api/admin/service-requests?page=1&pageSize=100');
+      const raw = await response.text();
+
+      if (!response.ok) {
+        throw new Error(raw || 'Не удалось загрузить заявки');
+      }
+
+      const result = raw ? JSON.parse(raw) : null;
+      const items = Array.isArray(result?.items) ? result.items : [];
+      setSubmissions(items);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Не удалось загрузить заявки';
+
+      toast.error(message);
+
+      if (message.includes('Сессия истекла')) {
+        navigate('/admin', { replace: true });
+      }
+    } finally {
+      setIsLoadingSubmissions(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSubmissions();
+    loadProjects();
+  }, []);
+
+  const toggleProjectPublish = async (projectId: string) => {
+    try {
+      setProjectActionId(projectId);
+
+      const response = await authFetch(`/api/admin/projects/${projectId}/visibility`, {
+        method: 'PATCH',
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(result?.message || result?.Message || 'Не удалось изменить видимость проекта');
+      }
+
+      setProjects((prev) =>
+        prev.map((p) =>
+          p.id === projectId ? { ...p, isVisible: !!result?.isVisible } : p
+        )
+      );
+
+      toast.success(result?.isVisible ? 'Проект теперь видим' : 'Проект скрыт');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Не удалось изменить видимость проекта');
+    } finally {
+      setProjectActionId(null);
+    }
+  };
+
+  const deleteProject = async (projectId: string) => {
+    if (!confirm('Вы уверены, что хотите удалить этот проект?')) return;
+
+    try {
+      setProjectActionId(projectId);
+
+      const response = await authFetch(`/api/admin/projects/${projectId}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(result?.message || result?.Message || 'Не удалось удалить проект');
+      }
+
+      setProjects((prev) => prev.filter((p) => p.id !== projectId));
+      toast.success('Проект удалён');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Не удалось удалить проект');
+    } finally {
+      setProjectActionId(null);
+    }
+  };
+
+  const toggleSubmissionStatus = async (submissionId: string) => {
+    const current = submissions.find((s) => s.id === submissionId);
+    if (!current) return;
+
+    const nextStatus = current.status === 'new' ? 'processed' : 'new';
+
+    try {
+      setUpdatingSubmissionId(submissionId);
+
+      const response = await authFetch(`/api/admin/service-requests/${submissionId}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: nextStatus,
+          adminNote: current.adminNote || null,
+        }),
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(result?.message || result?.Message || 'Не удалось обновить статус');
+      }
+
+      setSubmissions((prev) =>
+        prev.map((s) =>
+          s.id === submissionId
+            ? { ...s, status: nextStatus as 'new' | 'processed', processed: nextStatus === 'processed' }
+            : s
+        )
+      );
+
+      toast.success('Статус заявки обновлён');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Не удалось обновить статус');
+    } finally {
+      setUpdatingSubmissionId(null);
+    }
   };
 
   const deleteSubmission = (submissionId: string) => {
     if (confirm('Удалить эту заявку?')) {
-      setSubmissions(submissions.filter(s => s.id !== submissionId));
+      setSubmissions(submissions.filter((s) => s.id !== submissionId));
       toast.success('Заявка удалена');
     }
   };
@@ -148,73 +330,95 @@ export function AdminPanel() {
   };
 
   const handleEditProject = (projectId: string) => {
-    const project = projects.find(p => p.id === projectId);
-    if (project) {
-      setProjectForm({
-        titleRu: project.title.ru,
-        titleKz: project.title.kz,
-        titleEn: project.title.en,
-        descriptionRu: project.description.ru,
-        descriptionKz: project.description.kz,
-        descriptionEn: project.description.en,
-        category: project.category,
-        tags: project.tags.join(', '),
-        images: [],
-        demoUrl: '',
-        githubUrl: '',
-      });
-      setEditingProject(projectId);
-      setIsProjectDialogOpen(true);
-    }
+    const project = projects.find((p) => p.id === projectId);
+    if (!project) return;
+
+    setProjectForm({
+      titleRu: project.title.ru || '',
+      titleKz: project.title.kz || '',
+      titleEn: project.title.en || '',
+      descriptionRu: project.description.ru || '',
+      descriptionKz: project.description.kz || '',
+      descriptionEn: project.description.en || '',
+      category: project.category || '',
+      tags: project.tags.join(', '),
+      images: [],
+      demoUrl: '',
+      githubUrl: '',
+    });
+
+    setEditingProject(projectId);
+    setIsProjectDialogOpen(true);
   };
 
-  const handleSaveProject = () => {
-    // Валидация
-    if (!projectForm.titleRu || !projectForm.descriptionRu || !projectForm.category) {
+  const handleSaveProject = async () => {
+    if (!projectForm.titleRu.trim() || !projectForm.descriptionRu.trim() || !projectForm.category.trim()) {
       toast.error('Заполните обязательные поля (RU версия)');
       return;
     }
 
-    if (editingProject) {
-      // Редактирование существующего проекта
-      setProjects(projects.map(p =>
-        p.id === editingProject
-          ? {
-              ...p,
-              title: { ru: projectForm.titleRu, kz: projectForm.titleKz || projectForm.titleRu, en: projectForm.titleEn || projectForm.titleRu },
-              description: { ru: projectForm.descriptionRu, kz: projectForm.descriptionKz || projectForm.descriptionRu, en: projectForm.descriptionEn || projectForm.descriptionRu },
-              category: projectForm.category,
-              tags: projectForm.tags.split(',').map(t => t.trim()).filter(Boolean),
-            }
-          : p
-      ));
-      toast.success('Проект успешно обновлён!');
-    } else {
-      // Создание нового проекта
-      const newProject = {
-        id: `project-${Date.now()}`,
-        title: { ru: projectForm.titleRu, kz: projectForm.titleKz || projectForm.titleRu, en: projectForm.titleEn || projectForm.titleRu },
-        description: { ru: projectForm.descriptionRu, kz: projectForm.descriptionKz || projectForm.descriptionRu, en: projectForm.descriptionEn || projectForm.descriptionRu },
-        image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=80',
-        tags: projectForm.tags.split(',').map(t => t.trim()).filter(Boolean),
-        category: projectForm.category,
-        status: { ru: 'Завершено', en: 'Done', kz: 'Аяқталды' },
-        client: { ru: 'Новый клиент', en: 'New Client', kz: 'Жаңа клиент' },
-        duration: { ru: '3 месяца', en: '3 months', kz: '3 ай' },
-        team: { ru: '4 специалиста', en: '4 specialists', kz: '4 маман' },
-        year: new Date().getFullYear().toString(),
-        challenge: { ru: 'Создание проекта', en: 'Project creation', kz: 'Жоба жасау' },
-        solution: { ru: 'Успешно выполнено', en: 'Successfully completed', kz: 'Сәтті орындалды' },
-        results: { ru: 'Отличные результаты', en: 'Excellent results', kz: 'Тамаша нәтижелер' },
-        technologies: projectForm.tags.split(',').map(t => t.trim()).filter(Boolean),
-        features: [],
-        testimonial: { ru: '', en: '', kz: '' },
-      };
-      setProjects([newProject, ...projects]);
-      toast.success('Новый проект успешно создан!');
-    }
+    const payload = {
+      title: {
+        ru: projectForm.titleRu.trim(),
+        kz: projectForm.titleKz.trim() || projectForm.titleRu.trim(),
+        en: projectForm.titleEn.trim() || projectForm.titleRu.trim(),
+      },
+      description: {
+        ru: projectForm.descriptionRu.trim(),
+        kz: projectForm.descriptionKz.trim() || projectForm.descriptionRu.trim(),
+        en: projectForm.descriptionEn.trim() || projectForm.descriptionRu.trim(),
+      },
+      category: projectForm.category.trim(),
+      status: 'progress',
+      tags: projectForm.tags
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean),
+      image: '',
+      gallery: [],
+      stack: projectForm.tags
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean),
+      isVisible: true,
+    };
 
-    setIsProjectDialogOpen(false);
+    try {
+      setSavingProject(true);
+
+      const response = await authFetch(
+        editingProject
+          ? `/api/admin/projects/${editingProject}`
+          : '/api/admin/projects',
+        {
+          method: editingProject ? 'PUT' : 'POST',
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(result?.message || result?.Message || 'Не удалось сохранить проект');
+      }
+
+      if (editingProject) {
+        setProjects((prev) =>
+          prev.map((p) => (p.id === editingProject ? result : p))
+        );
+        toast.success('Проект успешно обновлён');
+      } else {
+        setProjects((prev) => [result, ...prev]);
+        toast.success('Проект успешно создан');
+      }
+
+      setIsProjectDialogOpen(false);
+      setEditingProject(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Не удалось сохранить проект');
+    } finally {
+      setSavingProject(false);
+    }
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -223,6 +427,14 @@ export function AdminPanel() {
       const fileArray = Array.from(files);
       setProjectForm({ ...projectForm, images: fileArray });
       toast.success(`Загружено ${fileArray.length} файл(ов)`);
+    }
+  };
+
+  const openAttachment = async (file: AttachmentInfoDto) => {
+    try {
+      await downloadProtectedFile(file.url, file.name);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Не удалось открыть файл');
     }
   };
 
@@ -239,7 +451,6 @@ export function AdminPanel() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <header className="bg-white border-b sticky top-0 z-10">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
@@ -247,7 +458,7 @@ export function AdminPanel() {
               <div className="h-8 w-8 rounded bg-gradient-to-br from-[#1973AE] to-[#39D2ED]" />
               <div>
                 <h1 className="text-lg font-semibold text-gray-900">Административная панель</h1>
-                <p className="text-xs text-gray-500">Apex Digital KZ</p>
+                <p className="text-xs text-gray-500">Apex Digital</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
@@ -263,9 +474,8 @@ export function AdminPanel() {
         </div>
       </header>
 
-      {/* Main Content */}
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs defaultValue="projects" className="space-y-6">
+        <Tabs defaultValue="submissions" className="space-y-6">
           <TabsList className="grid w-full max-w-2xl grid-cols-4">
             <TabsTrigger value="projects">
               <FolderOpen className="w-4 h-4 mr-2" />
@@ -274,9 +484,9 @@ export function AdminPanel() {
             <TabsTrigger value="submissions">
               <MessageSquare className="w-4 h-4 mr-2" />
               Заявки
-              {submissions.filter(s => s.status === 'new').length > 0 && (
+              {submissions.filter((s) => s.status === 'new').length > 0 && (
                 <Badge variant="destructive" className="ml-2">
-                  {submissions.filter(s => s.status === 'new').length}
+                  {submissions.filter((s) => s.status === 'new').length}
                 </Badge>
               )}
             </TabsTrigger>
@@ -290,66 +500,317 @@ export function AdminPanel() {
             </TabsTrigger>
           </TabsList>
 
-          {/* Projects Tab */}
           <TabsContent value="projects" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-gray-900">Управление проектами</h2>
-              <Button className="bg-[#1973AE] hover:bg-[#155a8a]" onClick={handleCreateProject}>
-                <Plus className="w-4 h-4 mr-2" />
-                Создать проект
-              </Button>
-            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Проекты</h2>
+                <p className="text-gray-600">Управление портфолио компании</p>
+              </div>
+              <Dialog open={isProjectDialogOpen} onOpenChange={setIsProjectDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    onClick={() => {
+                      setEditingProject(null);
+                      setProjectForm({
+                        titleRu: '',
+                        titleKz: '',
+                        titleEn: '',
+                        descriptionRu: '',
+                        descriptionKz: '',
+                        descriptionEn: '',
+                        category: '',
+                        tags: '',
+                        images: [],
+                        demoUrl: '',
+                        githubUrl: '',
+                      });
+                    }}
+                    className="bg-[#1973AE] hover:bg-[#155a8a]"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Добавить проект
+                  </Button>
+                </DialogTrigger>
 
-            <div className="grid gap-4">
-              {projects.map((project) => (
-                <div key={project.id} className="bg-white rounded-lg border p-6 hover:shadow-md transition-shadow">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900">{project.title.ru}</h3>
-                        <Badge variant={project.status.ru === 'В разработке' ? 'secondary' : 'default'}>
-                          {project.status.ru}
-                        </Badge>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>
+                      {editingProject ? 'Редактировать проект' : 'Добавить новый проект'}
+                    </DialogTitle>
+                  </DialogHeader>
+
+                  <div className="space-y-6">
+                    <Tabs defaultValue="ru" className="w-full">
+                      <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="ru">Русский</TabsTrigger>
+                        <TabsTrigger value="kz">Қазақша</TabsTrigger>
+                        <TabsTrigger value="en">English</TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="ru" className="space-y-4">
+                        <div>
+                          <Label htmlFor="titleRu">Название проекта *</Label>
+                          <Input
+                            id="titleRu"
+                            value={projectForm.titleRu}
+                            onChange={(e) =>
+                              setProjectForm({ ...projectForm, titleRu: e.target.value })
+                            }
+                            placeholder="Введите название проекта"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="descriptionRu">Описание проекта *</Label>
+                          <Textarea
+                            id="descriptionRu"
+                            value={projectForm.descriptionRu}
+                            onChange={(e) =>
+                              setProjectForm({
+                                ...projectForm,
+                                descriptionRu: e.target.value,
+                              })
+                            }
+                            placeholder="Краткое описание проекта"
+                            rows={4}
+                          />
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="kz" className="space-y-4">
+                        <div>
+                          <Label htmlFor="titleKz">Жоба атауы</Label>
+                          <Input
+                            id="titleKz"
+                            value={projectForm.titleKz}
+                            onChange={(e) =>
+                              setProjectForm({ ...projectForm, titleKz: e.target.value })
+                            }
+                            placeholder="Жоба атауын енгізіңіз"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="descriptionKz">Жоба сипаттамасы</Label>
+                          <Textarea
+                            id="descriptionKz"
+                            value={projectForm.descriptionKz}
+                            onChange={(e) =>
+                              setProjectForm({
+                                ...projectForm,
+                                descriptionKz: e.target.value,
+                              })
+                            }
+                            placeholder="Жобаның қысқаша сипаттамасы"
+                            rows={4}
+                          />
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="en" className="space-y-4">
+                        <div>
+                          <Label htmlFor="titleEn">Project Title</Label>
+                          <Input
+                            id="titleEn"
+                            value={projectForm.titleEn}
+                            onChange={(e) =>
+                              setProjectForm({ ...projectForm, titleEn: e.target.value })
+                            }
+                            placeholder="Enter project title"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="descriptionEn">Project Description</Label>
+                          <Textarea
+                            id="descriptionEn"
+                            value={projectForm.descriptionEn}
+                            onChange={(e) =>
+                              setProjectForm({
+                                ...projectForm,
+                                descriptionEn: e.target.value,
+                              })
+                            }
+                            placeholder="Brief project description"
+                            rows={4}
+                          />
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="category">Категория *</Label>
+                        <Input
+                          id="category"
+                          value={projectForm.category}
+                          onChange={(e) =>
+                            setProjectForm({ ...projectForm, category: e.target.value })
+                          }
+                          placeholder="например: Web Development"
+                        />
                       </div>
-                      <p className="text-sm text-gray-600 mb-3">{project.description.ru}</p>
-                      <div className="flex flex-wrap gap-2">
-                        {project.tags.map((tag, idx) => (
-                          <span key={idx} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-                            {tag}
-                          </span>
-                        ))}
+
+                      <div>
+                        <Label htmlFor="tags">Теги</Label>
+                        <Input
+                          id="tags"
+                          value={projectForm.tags}
+                          onChange={(e) =>
+                            setProjectForm({ ...projectForm, tags: e.target.value })
+                          }
+                          placeholder="React, TypeScript, Node.js"
+                        />
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2 ml-4">
+
+                    <div>
+                      <Label htmlFor="images">Изображения проекта</Label>
+                      <Input
+                        id="images"
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                      />
+                      <p className="text-sm text-gray-500 mt-1">
+                        Пока UI принимает файлы, но бэк проектов работает через JSON. Эти файлы сейчас не отправляются в API.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="demoUrl">Demo URL</Label>
+                        <Input
+                          id="demoUrl"
+                          value={projectForm.demoUrl}
+                          onChange={(e) =>
+                            setProjectForm({ ...projectForm, demoUrl: e.target.value })
+                          }
+                          placeholder="https://demo.example.com"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="githubUrl">GitHub URL</Label>
+                        <Input
+                          id="githubUrl"
+                          value={projectForm.githubUrl}
+                          onChange={(e) =>
+                            setProjectForm({ ...projectForm, githubUrl: e.target.value })
+                          }
+                          placeholder="https://github.com/example"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end space-x-2">
                       <Button
-                        size="sm"
                         variant="outline"
-                        onClick={() => toggleProjectPublish(project.id)}
+                        onClick={() => {
+                          setIsProjectDialogOpen(false);
+                          setEditingProject(null);
+                        }}
                       >
-                        {project.status.ru === 'В разработке' ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        Отмена
                       </Button>
                       <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEditProject(project.id)}
+                        onClick={handleSaveProject}
+                        disabled={savingProject}
+                        className="bg-[#1973AE] hover:bg-[#155a8a]"
                       >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => deleteProject(project.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
+                        {savingProject ? 'Сохранение...' : 'Сохранить'}
                       </Button>
                     </div>
                   </div>
-                </div>
-              ))}
+                </DialogContent>
+              </Dialog>
             </div>
+
+            {isLoadingProjects ? (
+              <div className="bg-white rounded-lg border p-10 text-center text-gray-500">
+                Загрузка проектов...
+              </div>
+            ) : projects.length === 0 ? (
+              <div className="bg-white rounded-lg border p-10 text-center text-gray-500">
+                Проектов пока нет
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {projects.map((project) => (
+                  <div
+                    key={project.id}
+                    className="bg-white rounded-lg border p-6 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {project.title.ru}
+                          </h3>
+
+                          <Badge variant={project.status === 'progress' ? 'secondary' : 'default'}>
+                            {project.status === 'progress'
+                              ? 'В разработке'
+                              : project.status === 'done'
+                              ? 'Завершено'
+                              : project.status === 'discovery'
+                              ? 'Исследование'
+                              : project.status}
+                          </Badge>
+
+                          {!project.isVisible && <Badge variant="outline">Скрыт</Badge>}
+                        </div>
+
+                        <p className="text-sm text-gray-600 mb-3">{project.description.ru}</p>
+
+                        <div className="flex flex-wrap gap-2">
+                          {project.tags.map((tag, idx) => (
+                            <span
+                              key={idx}
+                              className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-2 ml-4">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={projectActionId === project.id}
+                          onClick={() => toggleProjectPublish(project.id)}
+                        >
+                          {project.isVisible ? (
+                            <Eye className="w-4 h-4" />
+                          ) : (
+                            <EyeOff className="w-4 h-4" />
+                          )}
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEditProject(project.id)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          disabled={projectActionId === project.id}
+                          onClick={() => deleteProject(project.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
-          {/* Submissions Tab */}
           <TabsContent value="submissions" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold text-gray-900">Заявки клиентов</h2>
@@ -358,106 +819,144 @@ export function AdminPanel() {
                   Всего: {submissions.length}
                 </Badge>
                 <Badge variant="destructive">
-                  Новые: {submissions.filter(s => s.status === 'new').length}
+                  Новые: {submissions.filter((s) => s.status === 'new').length}
                 </Badge>
+                <Button variant="outline" onClick={loadSubmissions} disabled={isLoadingSubmissions}>
+                  {isLoadingSubmissions ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                  Обновить
+                </Button>
               </div>
             </div>
 
-            <div className="grid gap-4">
-              {submissions.map((submission) => (
-                <div
-                  key={submission.id}
-                  className={`bg-white rounded-lg border p-6 ${
-                    submission.status === 'new' ? 'border-l-4 border-l-[#39D2ED]' : ''
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">{submission.name}</h3>
-                      <p className="text-sm text-gray-600">{submission.company}</p>
+            {isLoadingSubmissions ? (
+              <div className="bg-white rounded-lg border p-10 text-center text-gray-500">
+                Загрузка заявок...
+              </div>
+            ) : submissions.length === 0 ? (
+              <div className="bg-white rounded-lg border p-10 text-center text-gray-500">
+                Заявок пока нет
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {submissions.map((submission) => (
+                  <div
+                    key={submission.id}
+                    className={`bg-white rounded-lg border p-6 ${
+                      submission.status === 'new' ? 'border-l-4 border-l-[#39D2ED]' : ''
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">{submission.name}</h3>
+                        <p className="text-sm text-gray-600">{submission.company || 'Без компании'}</p>
+                      </div>
+                      <Badge variant={submission.status === 'new' ? 'destructive' : 'secondary'}>
+                        {submission.status === 'new' ? 'Новая' : 'Обработано'}
+                      </Badge>
                     </div>
-                    <Badge variant={submission.status === 'new' ? 'destructive' : 'secondary'}>
-                      {submission.status === 'new' ? 'Новая' : 'Обработано'}
-                    </Badge>
-                  </div>
 
-                  <div className="space-y-2 mb-4">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-500">Email:</span>
-                        <p className="text-gray-900">{submission.email}</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Услуга:</span>
-                        <p className="text-gray-900">{submission.service}</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Бюджет:</span>
-                        <p className="text-gray-900">{submission.budget}</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Дата:</span>
-                        <p className="text-gray-900">{formatDateTime(submission.createdAt)}</p>
-                      </div>
-                    </div>
-                    <div>
-                      <span className="text-sm text-gray-500">Описание:</span>
-                      <p className="text-sm text-gray-900 mt-1">{submission.description}</p>
-                    </div>
-                    {submission.files.length > 0 && (
-                      <div>
-                        <span className="text-sm text-gray-500">Файлы:</span>
-                        <div className="flex flex-wrap gap-2 mt-1">
-                          {submission.files.map((file, idx) => (
-                            <span key={idx} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-                              📎 {file}
-                            </span>
-                          ))}
+                    <div className="space-y-2 mb-4">
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-500">Email:</span>
+                          <p className="text-gray-900">{submission.email || '—'}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Телефон:</span>
+                          <p className="text-gray-900">{submission.phone || '—'}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Услуга:</span>
+                          <p className="text-gray-900">{getLabel(submission.service, serviceLabelMap)}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Бюджет:</span>
+                          <p className="text-gray-900">{getLabel(submission.budget, budgetLabelMap)}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Срок:</span>
+                          <p className="text-gray-900">{getLabel(submission.timeline, timelineLabelMap)}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Дата:</span>
+                          <p className="text-gray-900">{formatDateTime(submission.createdAt)}</p>
                         </div>
                       </div>
-                    )}
-                  </div>
 
-                  <div className="flex space-x-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => toggleSubmissionStatus(submission.id)}
-                    >
-                      {submission.status === 'new' ? (
-                        <>
-                          <Check className="w-4 h-4 mr-2" />
-                          Отметить обработанной
-                        </>
-                      ) : (
-                        <>
-                          <X className="w-4 h-4 mr-2" />
-                          Отметить новой
-                        </>
+                      <div>
+                        <span className="text-sm text-gray-500">Описание:</span>
+                        <p className="text-sm text-gray-900 mt-1">{submission.description || '—'}</p>
+                      </div>
+
+                      {submission.attachments.length > 0 && (
+                        <div>
+                          <span className="text-sm text-gray-500">Файлы:</span>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {submission.attachments.map((file, idx) => (
+                              <Button
+                                key={`${submission.id}-${idx}`}
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openAttachment(file)}
+                                className="h-auto py-1.5"
+                              >
+                                <Paperclip className="w-4 h-4 mr-2" />
+                                {file.name}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
                       )}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => deleteSubmission(submission.id)}
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Удалить
-                    </Button>
+                    </div>
+
+                    <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => toggleSubmissionStatus(submission.id)}
+                        disabled={updatingSubmissionId === submission.id}
+                      >
+                        {updatingSubmissionId === submission.id ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Сохранение...
+                          </>
+                        ) : submission.status === 'new' ? (
+                          <>
+                            <Check className="w-4 h-4 mr-2" />
+                            Отметить обработанной
+                          </>
+                        ) : (
+                          <>
+                            <X className="w-4 h-4 mr-2" />
+                            Отметить новой
+                          </>
+                        )}
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => deleteSubmission(submission.id)}
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Удалить
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
-          {/* Settings Tab */}
           <TabsContent value="settings" className="space-y-6">
             <h2 className="text-2xl font-bold text-gray-900">Настройки сайта</h2>
-            
+
             <div className="bg-white rounded-lg border p-6 space-y-6">
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-gray-900">Контактная информация</h3>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Телефон</Label>
@@ -477,7 +976,7 @@ export function AdminPanel() {
 
               <div className="space-y-4 pt-6 border-t">
                 <h3 className="text-lg font-semibold text-gray-900">Социальные сети</h3>
-                
+
                 <div className="space-y-3">
                   <div className="space-y-2">
                     <Label>Instagram</Label>
@@ -502,192 +1001,11 @@ export function AdminPanel() {
             </div>
           </TabsContent>
 
-          {/* Vacancies Tab */}
           <TabsContent value="vacancies" className="space-y-6">
             <VacanciesManagement />
           </TabsContent>
         </Tabs>
       </div>
-
-      {/* Project Create/Edit Dialog */}
-      <Dialog open={isProjectDialogOpen} onOpenChange={setIsProjectDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingProject ? 'Редактировать проект' : 'Создать новый проект'}</DialogTitle>
-            <DialogDescription>
-              Заполните информацию о проекте на трёх языках. Обязательные поля отмечены звёздочкой (*)
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-6 py-4">
-            {/* Titles */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-gray-900">Название проекта</h3>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Русский *</Label>
-                  <Input
-                    value={projectForm.titleRu}
-                    onChange={(e) => setProjectForm({ ...projectForm, titleRu: e.target.value })}
-                    placeholder="Название проекта"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Қазақша</Label>
-                  <Input
-                    value={projectForm.titleKz}
-                    onChange={(e) => setProjectForm({ ...projectForm, titleKz: e.target.value })}
-                    placeholder="Жоба атауы"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>English</Label>
-                  <Input
-                    value={projectForm.titleEn}
-                    onChange={(e) => setProjectForm({ ...projectForm, titleEn: e.target.value })}
-                    placeholder="Project title"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Descriptions */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-gray-900">Описание проекта</h3>
-              <div className="grid grid-cols-1 gap-4">
-                <div className="space-y-2">
-                  <Label>Русский *</Label>
-                  <Textarea
-                    value={projectForm.descriptionRu}
-                    onChange={(e) => setProjectForm({ ...projectForm, descriptionRu: e.target.value })}
-                    placeholder="Подробное описание проекта"
-                    rows={3}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Қазақша</Label>
-                  <Textarea
-                    value={projectForm.descriptionKz}
-                    onChange={(e) => setProjectForm({ ...projectForm, descriptionKz: e.target.value })}
-                    placeholder="Жоба туралы толық сипаттама"
-                    rows={3}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>English</Label>
-                  <Textarea
-                    value={projectForm.descriptionEn}
-                    onChange={(e) => setProjectForm({ ...projectForm, descriptionEn: e.target.value })}
-                    placeholder="Detailed project description"
-                    rows={3}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Category & Tags */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Категория *</Label>
-                <Select value={projectForm.category} onValueChange={(value) => setProjectForm({ ...projectForm, category: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Выберите категорию" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Web Development">Web Development</SelectItem>
-                    <SelectItem value="Mobile Development">Mobile Development</SelectItem>
-                    <SelectItem value="Backend Development">Backend Development</SelectItem>
-                    <SelectItem value="ML & AI">ML & AI</SelectItem>
-                    <SelectItem value="UX/UI Design">UX/UI Design</SelectItem>
-                    <SelectItem value="1C Integration">1C Integration</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Теги (через запятую)</Label>
-                <Input
-                  value={projectForm.tags}
-                  onChange={(e) => setProjectForm({ ...projectForm, tags: e.target.value })}
-                  placeholder="React, TypeScript, Node.js"
-                />
-              </div>
-            </div>
-
-            {/* Images */}
-            <div className="space-y-2">
-              <Label>Изображения проекта</Label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-[#1973AE] transition-colors">
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                  id="project-images"
-                />
-                <label htmlFor="project-images" className="cursor-pointer">
-                  <Upload className="w-12 h-12 mx-auto text-gray-400 mb-2" />
-                  <p className="text-sm text-gray-600">
-                    Нажмите для загрузки изображений
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    PNG, JPG до 10MB (макс. 100MB)
-                  </p>
-                </label>
-                {projectForm.images.length > 0 && (
-                  <div className="mt-4">
-                    <p className="text-sm text-gray-700">
-                      Загружено файлов: {projectForm.images.length}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Links */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-gray-900">Ссылки (опционально)</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
-                    <LinkIcon className="w-4 h-4" />
-                    Demo URL
-                  </Label>
-                  <Input
-                    value={projectForm.demoUrl}
-                    onChange={(e) => setProjectForm({ ...projectForm, demoUrl: e.target.value })}
-                    placeholder="https://demo.example.com"
-                    type="url"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
-                    <LinkIcon className="w-4 h-4" />
-                    GitHub URL
-                  </Label>
-                  <Input
-                    value={projectForm.githubUrl}
-                    onChange={(e) => setProjectForm({ ...projectForm, githubUrl: e.target.value })}
-                    placeholder="https://github.com/..."
-                    type="url"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex justify-end space-x-3 pt-4 border-t">
-            <Button variant="outline" onClick={() => setIsProjectDialogOpen(false)}>
-              Отмена
-            </Button>
-            <Button className="bg-[#1973AE] hover:bg-[#155a8a]" onClick={handleSaveProject}>
-              {editingProject ? 'Сохранить изменения' : 'Создать проект'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
