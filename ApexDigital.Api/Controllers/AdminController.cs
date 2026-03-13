@@ -25,6 +25,18 @@ public class AdminController : ControllerBase
         _files = files;
         _audit = audit;
     }
+    
+    private static string? TryGetStoredProjectFileName(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return null;
+
+        const string marker = "/api/files/projects/";
+        var index = url.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (index >= 0)
+            return Path.GetFileName(url[(index + marker.Length)..]);
+
+        return null;
+    }
 
     private string AdminLogin => User.FindFirstValue(ClaimTypes.Name) ?? "unknown";
     private string BaseUrl => $"{Request.Scheme}://{Request.Host}";
@@ -158,23 +170,66 @@ public class AdminController : ControllerBase
     }
 
     [HttpPost("projects")]
-    public async Task<IActionResult> CreateProject([FromBody] CreateProjectDto dto)
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(25 * 1024 * 1024)]
+    public async Task<IActionResult> CreateProject([FromForm] CreateProjectForm form)
     {
-        if (!ModelState.IsValid) return BadRequest(new ApiError("Validation error"));
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+        if (string.IsNullOrWhiteSpace(form.TitleRu) || string.IsNullOrWhiteSpace(form.DescriptionRu) ||
+            string.IsNullOrWhiteSpace(form.Category))
+            return BadRequest(new ApiError("Заполните обязательные поля проекта"));
 
-        var slug = GenerateSlug(dto.Title.En);
+        string imageUrl = "";
+
+        if (form.Image != null && form.Image.Length > 0)
+        {
+            if (!_files.ValidateFile(form.Image.FileName, form.Image.ContentType, form.Image.Length, out var err))
+                return BadRequest(new ApiError(err));
+
+            using var stream = form.Image.OpenReadStream();
+            var (storedName, _) =
+                await _files.SaveAsync(stream, form.Image.FileName, form.Image.ContentType, "projects");
+            imageUrl = $"/api/files/projects/{storedName}";
+        }
+
+        var titleEnForSlug = string.IsNullOrWhiteSpace(form.TitleEn) ? form.TitleRu : form.TitleEn;
+        var slug = GenerateSlug(titleEnForSlug);
+
         var existing = await _db.Projects.Find(p => p.Slug == slug).FirstOrDefaultAsync();
-        if (existing != null) slug += "-" + DateTime.UtcNow.Ticks.ToString()[^4..];
+        if (existing != null)
+            slug += "-" + DateTime.UtcNow.Ticks.ToString()[^4..];
+
+        var tags = string.IsNullOrWhiteSpace(form.Tags)
+            ? new List<string>()
+            : form.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
 
         var entity = new Project
         {
             Slug = slug,
-            Title = dto.Title.ToEntity(), Description = dto.Description.ToEntity(),
-            FullDescription = dto.FullDescription?.ToEntity(), Challenge = dto.Challenge?.ToEntity(),
-            Solution = dto.Solution?.ToEntity(), Features = dto.Features?.ToEntity(),
-            Category = dto.Category, Status = dto.Status, Tags = dto.Tags,
-            Image = dto.Image, Gallery = dto.Gallery, Stack = dto.Stack,
-            Results = dto.Results?.ToEntity(), IsVisible = dto.IsVisible, Timeline = dto.Timeline?.ToEntity(),
+            Title = new LocalizedString
+            {
+                Ru = form.TitleRu.Trim(),
+                Kz = string.IsNullOrWhiteSpace(form.TitleKz) ? form.TitleRu.Trim() : form.TitleKz.Trim(),
+                En = string.IsNullOrWhiteSpace(form.TitleEn) ? form.TitleRu.Trim() : form.TitleEn.Trim(),
+            },
+            Description = new LocalizedString
+            {
+                Ru = form.DescriptionRu.Trim(),
+                Kz = string.IsNullOrWhiteSpace(form.DescriptionKz)
+                    ? form.DescriptionRu.Trim()
+                    : form.DescriptionKz.Trim(),
+                En = string.IsNullOrWhiteSpace(form.DescriptionEn)
+                    ? form.DescriptionRu.Trim()
+                    : form.DescriptionEn.Trim(),
+            },
+            Category = form.Category.Trim(),
+            Status = string.IsNullOrWhiteSpace(form.Status) ? "progress" : form.Status.Trim(),
+            Tags = tags,
+            Stack = tags,
+            Image = imageUrl,
+            Gallery = new List<string>(),
+            IsVisible = form.IsVisible,
         };
 
         await _db.Projects.InsertOneAsync(entity);
@@ -183,27 +238,54 @@ public class AdminController : ControllerBase
     }
 
     [HttpPut("projects/{id}")]
-    public async Task<IActionResult> UpdateProject(string id, [FromBody] CreateProjectDto dto)
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(25 * 1024 * 1024)]
+    public async Task<IActionResult> UpdateProject(string id, [FromForm] CreateProjectForm form)
     {
         var existing = await _db.Projects.Find(p => p.Id == id).FirstOrDefaultAsync();
         if (existing == null) return NotFound(new ApiError("Проект не найден"));
 
-        existing.Title = dto.Title.ToEntity();
-        existing.Description = dto.Description.ToEntity();
-        existing.FullDescription = dto.FullDescription?.ToEntity();
-        existing.Challenge = dto.Challenge?.ToEntity();
-        existing.Solution = dto.Solution?.ToEntity();
-        existing.Features = dto.Features?.ToEntity();
-        existing.Category = dto.Category;
-        existing.Status = dto.Status;
-        existing.Tags = dto.Tags;
-        existing.Image = dto.Image;
-        existing.Gallery = dto.Gallery;
-        existing.Stack = dto.Stack;
-        existing.Results = dto.Results?.ToEntity();
-        existing.IsVisible = dto.IsVisible;
-        existing.Timeline = dto.Timeline?.ToEntity();
+        if (string.IsNullOrWhiteSpace(form.TitleRu) || string.IsNullOrWhiteSpace(form.DescriptionRu) ||
+            string.IsNullOrWhiteSpace(form.Category))
+            return BadRequest(new ApiError("Заполните обязательные поля проекта"));
+
+        existing.Title = new LocalizedString
+        {
+            Ru = form.TitleRu.Trim(),
+            Kz = string.IsNullOrWhiteSpace(form.TitleKz) ? form.TitleRu.Trim() : form.TitleKz.Trim(),
+            En = string.IsNullOrWhiteSpace(form.TitleEn) ? form.TitleRu.Trim() : form.TitleEn.Trim(),
+        };
+
+        existing.Description = new LocalizedString
+        {
+            Ru = form.DescriptionRu.Trim(),
+            Kz = string.IsNullOrWhiteSpace(form.DescriptionKz) ? form.DescriptionRu.Trim() : form.DescriptionKz.Trim(),
+            En = string.IsNullOrWhiteSpace(form.DescriptionEn) ? form.DescriptionRu.Trim() : form.DescriptionEn.Trim(),
+        };
+
+        existing.Category = form.Category.Trim();
+        existing.Status = string.IsNullOrWhiteSpace(form.Status) ? existing.Status : form.Status.Trim();
+        existing.Tags = string.IsNullOrWhiteSpace(form.Tags)
+            ? new List<string>()
+            : form.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+        existing.Stack = existing.Tags;
+        existing.IsVisible = form.IsVisible;
         existing.UpdatedAt = DateTime.UtcNow;
+
+        if (form.Image != null && form.Image.Length > 0)
+        {
+            if (!_files.ValidateFile(form.Image.FileName, form.Image.ContentType, form.Image.Length, out var err))
+                return BadRequest(new ApiError(err));
+
+            var oldStoredName = TryGetStoredProjectFileName(existing.Image);
+            if (!string.IsNullOrWhiteSpace(oldStoredName))
+                await _files.DeleteAsync(oldStoredName, "projects");
+
+            using var stream = form.Image.OpenReadStream();
+            var (storedName, _) =
+                await _files.SaveAsync(stream, form.Image.FileName, form.Image.ContentType, "projects");
+            existing.Image = $"/api/files/projects/{storedName}";
+        }
 
         await _db.Projects.ReplaceOneAsync(p => p.Id == id, existing);
         await _audit.LogAsync("update", "Project", id, AdminLogin);
@@ -227,8 +309,16 @@ public class AdminController : ControllerBase
     [HttpDelete("projects/{id}")]
     public async Task<IActionResult> DeleteProject(string id)
     {
+        var existing = await _db.Projects.Find(p => p.Id == id).FirstOrDefaultAsync();
+        if (existing == null) return NotFound(new ApiError("Проект не найден"));
+
+        var storedName = TryGetStoredProjectFileName(existing.Image);
+        if (!string.IsNullOrWhiteSpace(storedName))
+            await _files.DeleteAsync(storedName, "projects");
+
         var result = await _db.Projects.DeleteOneAsync(p => p.Id == id);
         if (result.DeletedCount == 0) return NotFound(new ApiError("Проект не найден"));
+
         await _audit.LogAsync("delete", "Project", id, AdminLogin);
         return Ok(new { message = "Удалено" });
     }

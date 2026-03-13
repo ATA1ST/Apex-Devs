@@ -12,12 +12,21 @@ public class FilesController : ControllerBase
 
     public FilesController(IFileStorageService files) => _files = files;
 
-    /// <summary>GET /api/files/{subfolder}/{fileName} — Download file (admin only)</summary>
+    [HttpGet("projects/{fileName}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetProjectFile(string fileName)
+    {
+        var result = await _files.GetAsync(fileName, "projects");
+        if (result == null) return NotFound();
+
+        var (stream, contentType) = result.Value;
+        return File(stream, contentType);
+    }
+
     [HttpGet("{subfolder}/{fileName}")]
     [Authorize]
     public async Task<IActionResult> Download(string subfolder, string fileName)
     {
-        // Whitelist subfolders
         if (subfolder != "resumes" && subfolder != "requests")
             return NotFound();
 

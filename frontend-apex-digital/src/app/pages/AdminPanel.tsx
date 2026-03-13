@@ -129,16 +129,14 @@ export function AdminPanel() {
     descriptionRu: '',
     descriptionKz: '',
     descriptionEn: '',
-    category: '',
+    category: 'web',
     tags: '',
-    images: [] as File[],
-    demoUrl: '',
-    githubUrl: '',
+    image: null as File | null,
   });
 
   const handleLogout = () => {
     clearSession();
-    navigate('/admin', { replace: true });
+    navigate('/admin', {replace: true});
     toast.success('Вы вышли из системы');
   };
 
@@ -190,7 +188,7 @@ export function AdminPanel() {
       toast.error(message);
 
       if (message.includes('Сессия истекла')) {
-        navigate('/admin', { replace: true });
+        navigate('/admin', {replace: true});
       }
     } finally {
       setIsLoadingProjects(false);
@@ -213,12 +211,12 @@ export function AdminPanel() {
       setSubmissions(items);
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : 'Не удалось загрузить заявки';
+          error instanceof Error ? error.message : 'Не удалось загрузить заявки';
 
       toast.error(message);
 
       if (message.includes('Сессия истекла')) {
-        navigate('/admin', { replace: true });
+        navigate('/admin', {replace: true});
       }
     } finally {
       setIsLoadingSubmissions(false);
@@ -249,7 +247,7 @@ export function AdminPanel() {
       toast.error(message);
 
       if (message.includes('Session expired')) {
-        navigate('/admin', { replace: true });
+        navigate('/admin', {replace: true});
       }
     } finally {
       setIsLoadingSettings(false);
@@ -285,7 +283,7 @@ export function AdminPanel() {
       toast.error(message);
 
       if (message.includes('Session expired')) {
-        navigate('/admin', { replace: true });
+        navigate('/admin', {replace: true});
       }
     } finally {
       setIsSavingSettings(false);
@@ -313,9 +311,9 @@ export function AdminPanel() {
       }
 
       setProjects((prev) =>
-        prev.map((p) =>
-          p.id === projectId ? { ...p, isVisible: !!result?.isVisible } : p
-        )
+          prev.map((p) =>
+              p.id === projectId ? {...p, isVisible: !!result?.isVisible} : p
+          )
       );
 
       toast.success(result?.isVisible ? 'Проект теперь видим' : 'Проект скрыт');
@@ -375,11 +373,11 @@ export function AdminPanel() {
       }
 
       setSubmissions((prev) =>
-        prev.map((s) =>
-          s.id === submissionId
-            ? { ...s, status: nextStatus as 'new' | 'processed', processed: nextStatus === 'processed' }
-            : s
-        )
+          prev.map((s) =>
+              s.id === submissionId
+                  ? {...s, status: nextStatus as 'new' | 'processed', processed: nextStatus === 'processed'}
+                  : s
+          )
       );
 
       toast.success('Статус заявки обновлён');
@@ -413,7 +411,7 @@ export function AdminPanel() {
       toast.error(message);
 
       if (message.includes('Session expired')) {
-        navigate('/admin', { replace: true });
+        navigate('/admin', {replace: true});
       }
     } finally {
       setUpdatingSubmissionId(null);
@@ -428,11 +426,9 @@ export function AdminPanel() {
       descriptionRu: '',
       descriptionKz: '',
       descriptionEn: '',
-      category: '',
+      category: 'web',
       tags: '',
-      images: [],
-      demoUrl: '',
-      githubUrl: '',
+      image: null,
     });
     setEditingProject(null);
     setIsProjectDialogOpen(true);
@@ -449,11 +445,9 @@ export function AdminPanel() {
       descriptionRu: project.description.ru || '',
       descriptionKz: project.description.kz || '',
       descriptionEn: project.description.en || '',
-      category: project.category || '',
+      category: project.category || 'web',
       tags: project.tags.join(', '),
-      images: [],
-      demoUrl: '',
-      githubUrl: '',
+      image: null,
     });
 
     setEditingProject(projectId);
@@ -466,43 +460,33 @@ export function AdminPanel() {
       return;
     }
 
-    const payload = {
-      title: {
-        ru: projectForm.titleRu.trim(),
-        kz: projectForm.titleKz.trim() || projectForm.titleRu.trim(),
-        en: projectForm.titleEn.trim() || projectForm.titleRu.trim(),
-      },
-      description: {
-        ru: projectForm.descriptionRu.trim(),
-        kz: projectForm.descriptionKz.trim() || projectForm.descriptionRu.trim(),
-        en: projectForm.descriptionEn.trim() || projectForm.descriptionRu.trim(),
-      },
-      category: projectForm.category.trim(),
-      status: 'progress',
-      tags: projectForm.tags
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean),
-      image: '',
-      gallery: [],
-      stack: projectForm.tags
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean),
-      isVisible: true,
-    };
-
     try {
       setSavingProject(true);
 
+      const formData = new FormData();
+      formData.append('TitleRu', projectForm.titleRu.trim());
+      formData.append('TitleKz', projectForm.titleKz.trim());
+      formData.append('TitleEn', projectForm.titleEn.trim());
+
+      formData.append('DescriptionRu', projectForm.descriptionRu.trim());
+      formData.append('DescriptionKz', projectForm.descriptionKz.trim());
+      formData.append('DescriptionEn', projectForm.descriptionEn.trim());
+
+      formData.append('Category', projectForm.category.trim());
+      formData.append('Status', 'progress');
+      formData.append('Tags', projectForm.tags);
+      formData.append('IsVisible', 'true');
+
+      if (projectForm.image) {
+        formData.append('Image', projectForm.image);
+      }
+
       const response = await authFetch(
-        editingProject
-          ? `/api/admin/projects/${editingProject}`
-          : '/api/admin/projects',
-        {
-          method: editingProject ? 'PUT' : 'POST',
-          body: JSON.stringify(payload),
-        }
+          editingProject ? `/api/admin/projects/${editingProject}` : '/api/admin/projects',
+          {
+            method: editingProject ? 'PUT' : 'POST',
+            body: formData,
+          }
       );
 
       const result = await response.json().catch(() => null);
@@ -512,9 +496,7 @@ export function AdminPanel() {
       }
 
       if (editingProject) {
-        setProjects((prev) =>
-          prev.map((p) => (p.id === editingProject ? result : p))
-        );
+        setProjects((prev) => prev.map((p) => (p.id === editingProject ? result : p)));
         toast.success('Проект успешно обновлён');
       } else {
         setProjects((prev) => [result, ...prev]);
@@ -523,6 +505,17 @@ export function AdminPanel() {
 
       setIsProjectDialogOpen(false);
       setEditingProject(null);
+      setProjectForm({
+        titleRu: '',
+        titleKz: '',
+        titleEn: '',
+        descriptionRu: '',
+        descriptionKz: '',
+        descriptionEn: '',
+        category: 'web',
+        tags: '',
+        image: null,
+      });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Не удалось сохранить проект');
     } finally {
@@ -531,11 +524,11 @@ export function AdminPanel() {
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      const fileArray = Array.from(files);
-      setProjectForm({ ...projectForm, images: fileArray });
-      toast.success(`Загружено ${fileArray.length} файл(ов)`);
+    const file = e.target.files?.[0] || null;
+    setProjectForm((prev) => ({ ...prev, image: file }));
+
+    if (file) {
+      toast.success(`Загружен файл: ${file.name}`);
     }
   };
 
@@ -558,587 +551,592 @@ export function AdminPanel() {
     }).format(date);
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b sticky top-0 z-10">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="h-8 w-8 rounded bg-gradient-to-br from-[#1973AE] to-[#39D2ED]" />
-              <div>
-                <h1 className="text-lg font-semibold text-gray-900">Административная панель</h1>
-                <p className="text-xs text-gray-500">Apex Digital</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Button variant="outline" onClick={() => navigate('/')}>
-                Перейти на сайт
-              </Button>
-              <Button variant="destructive" onClick={handleLogout}>
-                <LogOut className="w-4 h-4 mr-2" />
-                Выход
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs defaultValue="submissions" className="space-y-6">
-          <TabsList className="grid w-full max-w-2xl grid-cols-4">
-            <TabsTrigger value="projects">
-              <FolderOpen className="w-4 h-4 mr-2" />
-              Проекты
-            </TabsTrigger>
-            <TabsTrigger value="submissions">
-              <MessageSquare className="w-4 h-4 mr-2" />
-              Заявки
-              {submissions.filter((s) => s.status === 'new').length > 0 && (
-                <Badge variant="destructive" className="ml-2">
-                  {submissions.filter((s) => s.status === 'new').length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="settings">
-              <Settings className="w-4 h-4 mr-2" />
-              Настройки
-            </TabsTrigger>
-            <TabsTrigger value="vacancies">
-              <Briefcase className="w-4 h-4 mr-2" />
-              Вакансии
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="projects" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">Проекты</h2>
-                <p className="text-gray-600">Управление портфолио компании</p>
-              </div>
-              <Dialog open={isProjectDialogOpen} onOpenChange={setIsProjectDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button
-                    onClick={() => {
-                      setEditingProject(null);
-                      setProjectForm({
-                        titleRu: '',
-                        titleKz: '',
-                        titleEn: '',
-                        descriptionRu: '',
-                        descriptionKz: '',
-                        descriptionEn: '',
-                        category: '',
-                        tags: '',
-                        images: [],
-                        demoUrl: '',
-                        githubUrl: '',
-                      });
-                    }}
-                    className="bg-[#1973AE] hover:bg-[#155a8a]"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Добавить проект
+    return (
+        <div className="min-h-screen bg-gray-50">
+          <header className="bg-white border-b sticky top-0 z-10">
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex h-16 items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="h-8 w-8 rounded bg-gradient-to-br from-[#1973AE] to-[#39D2ED]"/>
+                  <div>
+                    <h1 className="text-lg font-semibold text-gray-900">Административная панель</h1>
+                    <p className="text-xs text-gray-500">Apex Digital</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <Button variant="outline" onClick={() => navigate('/')}>
+                    Перейти на сайт
                   </Button>
-                </DialogTrigger>
-
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>
-                      {editingProject ? 'Редактировать проект' : 'Добавить новый проект'}
-                    </DialogTitle>
-                  </DialogHeader>
-
-                  <div className="space-y-6">
-                    <Tabs defaultValue="ru" className="w-full">
-                      <TabsList className="grid w-full grid-cols-3">
-                        <TabsTrigger value="ru">Русский</TabsTrigger>
-                        <TabsTrigger value="kz">Қазақша</TabsTrigger>
-                        <TabsTrigger value="en">English</TabsTrigger>
-                      </TabsList>
-
-                      <TabsContent value="ru" className="space-y-4">
-                        <div>
-                          <Label htmlFor="titleRu">Название проекта *</Label>
-                          <Input
-                            id="titleRu"
-                            value={projectForm.titleRu}
-                            onChange={(e) =>
-                              setProjectForm({ ...projectForm, titleRu: e.target.value })
-                            }
-                            placeholder="Введите название проекта"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="descriptionRu">Описание проекта *</Label>
-                          <Textarea
-                            id="descriptionRu"
-                            value={projectForm.descriptionRu}
-                            onChange={(e) =>
-                              setProjectForm({
-                                ...projectForm,
-                                descriptionRu: e.target.value,
-                              })
-                            }
-                            placeholder="Краткое описание проекта"
-                            rows={4}
-                          />
-                        </div>
-                      </TabsContent>
-
-                      <TabsContent value="kz" className="space-y-4">
-                        <div>
-                          <Label htmlFor="titleKz">Жоба атауы</Label>
-                          <Input
-                            id="titleKz"
-                            value={projectForm.titleKz}
-                            onChange={(e) =>
-                              setProjectForm({ ...projectForm, titleKz: e.target.value })
-                            }
-                            placeholder="Жоба атауын енгізіңіз"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="descriptionKz">Жоба сипаттамасы</Label>
-                          <Textarea
-                            id="descriptionKz"
-                            value={projectForm.descriptionKz}
-                            onChange={(e) =>
-                              setProjectForm({
-                                ...projectForm,
-                                descriptionKz: e.target.value,
-                              })
-                            }
-                            placeholder="Жобаның қысқаша сипаттамасы"
-                            rows={4}
-                          />
-                        </div>
-                      </TabsContent>
-
-                      <TabsContent value="en" className="space-y-4">
-                        <div>
-                          <Label htmlFor="titleEn">Project Title</Label>
-                          <Input
-                            id="titleEn"
-                            value={projectForm.titleEn}
-                            onChange={(e) =>
-                              setProjectForm({ ...projectForm, titleEn: e.target.value })
-                            }
-                            placeholder="Enter project title"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="descriptionEn">Project Description</Label>
-                          <Textarea
-                            id="descriptionEn"
-                            value={projectForm.descriptionEn}
-                            onChange={(e) =>
-                              setProjectForm({
-                                ...projectForm,
-                                descriptionEn: e.target.value,
-                              })
-                            }
-                            placeholder="Brief project description"
-                            rows={4}
-                          />
-                        </div>
-                      </TabsContent>
-                    </Tabs>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="category">Категория *</Label>
-                        <Input
-                          id="category"
-                          value={projectForm.category}
-                          onChange={(e) =>
-                            setProjectForm({ ...projectForm, category: e.target.value })
-                          }
-                          placeholder="например: Web Development"
-                        />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="tags">Теги</Label>
-                        <Input
-                          id="tags"
-                          value={projectForm.tags}
-                          onChange={(e) =>
-                            setProjectForm({ ...projectForm, tags: e.target.value })
-                          }
-                          placeholder="React, TypeScript, Node.js"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="images">Изображения проекта</Label>
-                      <Input
-                        id="images"
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                      />
-                      <p className="text-sm text-gray-500 mt-1">
-                        Пока UI принимает файлы, но бэк проектов работает через JSON. Эти файлы сейчас не отправляются в API.
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="demoUrl">Demo URL</Label>
-                        <Input
-                          id="demoUrl"
-                          value={projectForm.demoUrl}
-                          onChange={(e) =>
-                            setProjectForm({ ...projectForm, demoUrl: e.target.value })
-                          }
-                          placeholder="https://demo.example.com"
-                        />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="githubUrl">GitHub URL</Label>
-                        <Input
-                          id="githubUrl"
-                          value={projectForm.githubUrl}
-                          onChange={(e) =>
-                            setProjectForm({ ...projectForm, githubUrl: e.target.value })
-                          }
-                          placeholder="https://github.com/example"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end space-x-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setIsProjectDialogOpen(false);
-                          setEditingProject(null);
-                        }}
-                      >
-                        Отмена
-                      </Button>
-                      <Button
-                        onClick={handleSaveProject}
-                        disabled={savingProject}
-                        className="bg-[#1973AE] hover:bg-[#155a8a]"
-                      >
-                        {savingProject ? 'Сохранение...' : 'Сохранить'}
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-
-            {isLoadingProjects ? (
-              <div className="bg-white rounded-lg border p-10 text-center text-gray-500">
-                Загрузка проектов...
-              </div>
-            ) : projects.length === 0 ? (
-              <div className="bg-white rounded-lg border p-10 text-center text-gray-500">
-                Проектов пока нет
-              </div>
-            ) : (
-              <div className="grid gap-4">
-                {projects.map((project) => (
-                  <div
-                    key={project.id}
-                    className="bg-white rounded-lg border p-6 hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            {project.title.ru}
-                          </h3>
-
-                          <Badge variant={project.status === 'progress' ? 'secondary' : 'default'}>
-                            {project.status === 'progress'
-                              ? 'В разработке'
-                              : project.status === 'done'
-                              ? 'Завершено'
-                              : project.status === 'discovery'
-                              ? 'Исследование'
-                              : project.status}
-                          </Badge>
-
-                          {!project.isVisible && <Badge variant="outline">Скрыт</Badge>}
-                        </div>
-
-                        <p className="text-sm text-gray-600 mb-3">{project.description.ru}</p>
-
-                        <div className="flex flex-wrap gap-2">
-                          {project.tags.map((tag, idx) => (
-                            <span
-                              key={idx}
-                              className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-2 ml-4">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={projectActionId === project.id}
-                          onClick={() => toggleProjectPublish(project.id)}
-                        >
-                          {project.isVisible ? (
-                            <Eye className="w-4 h-4" />
-                          ) : (
-                            <EyeOff className="w-4 h-4" />
-                          )}
-                        </Button>
-
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleEditProject(project.id)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          disabled={projectActionId === project.id}
-                          onClick={() => deleteProject(project.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="submissions" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-gray-900">Заявки клиентов</h2>
-              <div className="flex space-x-2">
-                <Badge variant="secondary">
-                  Всего: {submissions.length}
-                </Badge>
-                <Badge variant="destructive">
-                  Новые: {submissions.filter((s) => s.status === 'new').length}
-                </Badge>
-                <Button variant="outline" onClick={loadSubmissions} disabled={isLoadingSubmissions}>
-                  {isLoadingSubmissions ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                  Обновить
-                </Button>
+                  <Button variant="destructive" onClick={handleLogout}>
+                    <LogOut className="w-4 h-4 mr-2"/>
+                    Выход
+                  </Button>
+                </div>
               </div>
             </div>
+          </header>
 
-            {isLoadingSubmissions ? (
-              <div className="bg-white rounded-lg border p-10 text-center text-gray-500">
-                Загрузка заявок...
-              </div>
-            ) : submissions.length === 0 ? (
-              <div className="bg-white rounded-lg border p-10 text-center text-gray-500">
-                Заявок пока нет
-              </div>
-            ) : (
-              <div className="grid gap-4">
-                {submissions.map((submission) => (
-                  <div
-                    key={submission.id}
-                    className={`bg-white rounded-lg border p-6 ${
-                      submission.status === 'new' ? 'border-l-4 border-l-[#39D2ED]' : ''
-                    }`}
-                  >
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">{submission.name}</h3>
-                        <p className="text-sm text-gray-600">{submission.company || 'Без компании'}</p>
-                      </div>
-                      <Badge variant={submission.status === 'new' ? 'destructive' : 'secondary'}>
-                        {submission.status === 'new' ? 'Новая' : 'Обработано'}
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <Tabs defaultValue="submissions" className="space-y-6">
+              <TabsList className="grid w-full max-w-2xl grid-cols-4">
+                <TabsTrigger value="projects">
+                  <FolderOpen className="w-4 h-4 mr-2"/>
+                  Проекты
+                </TabsTrigger>
+                <TabsTrigger value="submissions">
+                  <MessageSquare className="w-4 h-4 mr-2"/>
+                  Заявки
+                  {submissions.filter((s) => s.status === 'new').length > 0 && (
+                      <Badge variant="destructive" className="ml-2">
+                        {submissions.filter((s) => s.status === 'new').length}
                       </Badge>
-                    </div>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="settings">
+                  <Settings className="w-4 h-4 mr-2"/>
+                  Настройки
+                </TabsTrigger>
+                <TabsTrigger value="vacancies">
+                  <Briefcase className="w-4 h-4 mr-2"/>
+                  Вакансии
+                </TabsTrigger>
+              </TabsList>
 
-                    <div className="space-y-2 mb-4">
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-500">Email:</span>
-                          <p className="text-gray-900">{submission.email || '—'}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Телефон:</span>
-                          <p className="text-gray-900">{submission.phone || '—'}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Услуга:</span>
-                          <p className="text-gray-900">{getLabel(submission.service, serviceLabelMap)}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Бюджет:</span>
-                          <p className="text-gray-900">{getLabel(submission.budget, budgetLabelMap)}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Срок:</span>
-                          <p className="text-gray-900">{getLabel(submission.timeline, timelineLabelMap)}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Дата:</span>
-                          <p className="text-gray-900">{formatDateTime(submission.createdAt)}</p>
-                        </div>
-                      </div>
+              <TabsContent value="projects" className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Проекты</h2>
+                    <p className="text-gray-600">Управление портфолио компании</p>
+                  </div>
+                  <Dialog open={isProjectDialogOpen} onOpenChange={setIsProjectDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button
+                          onClick={() => {
+                            setEditingProject(null);
+                            setProjectForm({
+                              titleRu: '',
+                              titleKz: '',
+                              titleEn: '',
+                              descriptionRu: '',
+                              descriptionKz: '',
+                              descriptionEn: '',
+                              category: '',
+                              tags: '',
+                              image: null,
+                            });
+                          }}
+                          className="bg-[#1973AE] hover:bg-[#155a8a]"
+                      >
+                        <Plus className="w-4 h-4 mr-2"/>
+                        Добавить проект
+                      </Button>
+                    </DialogTrigger>
 
-                      <div>
-                        <span className="text-sm text-gray-500">Описание:</span>
-                        <p className="text-sm text-gray-900 mt-1">{submission.description || '—'}</p>
-                      </div>
+                    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>
+                          {editingProject ? 'Редактировать проект' : 'Добавить новый проект'}
+                        </DialogTitle>
+                      </DialogHeader>
 
-                      {submission.attachments.length > 0 && (
-                        <div>
-                          <span className="text-sm text-gray-500">Файлы:</span>
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {submission.attachments.map((file, idx) => (
-                              <Button
-                                key={`${submission.id}-${idx}`}
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                onClick={() => openAttachment(file)}
-                                className="h-auto py-1.5"
-                              >
-                                <Paperclip className="w-4 h-4 mr-2" />
-                                {file.name}
-                              </Button>
-                            ))}
+                      <div className="space-y-6">
+                        <Tabs defaultValue="ru" className="w-full">
+                          <TabsList className="grid w-full grid-cols-3">
+                            <TabsTrigger value="ru">Русский</TabsTrigger>
+                            <TabsTrigger value="kz">Қазақша</TabsTrigger>
+                            <TabsTrigger value="en">English</TabsTrigger>
+                          </TabsList>
+
+                          <TabsContent value="ru" className="space-y-4">
+                            <div>
+                              <Label htmlFor="titleRu">Название проекта *</Label>
+                              <Input
+                                  id="titleRu"
+                                  value={projectForm.titleRu}
+                                  onChange={(e) =>
+                                      setProjectForm({...projectForm, titleRu: e.target.value})
+                                  }
+                                  placeholder="Введите название проекта"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="descriptionRu">Описание проекта *</Label>
+                              <Textarea
+                                  id="descriptionRu"
+                                  value={projectForm.descriptionRu}
+                                  onChange={(e) =>
+                                      setProjectForm({
+                                        ...projectForm,
+                                        descriptionRu: e.target.value,
+                                      })
+                                  }
+                                  placeholder="Краткое описание проекта"
+                                  rows={4}
+                              />
+                            </div>
+                          </TabsContent>
+
+                          <TabsContent value="kz" className="space-y-4">
+                            <div>
+                              <Label htmlFor="titleKz">Жоба атауы</Label>
+                              <Input
+                                  id="titleKz"
+                                  value={projectForm.titleKz}
+                                  onChange={(e) =>
+                                      setProjectForm({...projectForm, titleKz: e.target.value})
+                                  }
+                                  placeholder="Жоба атауын енгізіңіз"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="descriptionKz">Жоба сипаттамасы</Label>
+                              <Textarea
+                                  id="descriptionKz"
+                                  value={projectForm.descriptionKz}
+                                  onChange={(e) =>
+                                      setProjectForm({
+                                        ...projectForm,
+                                        descriptionKz: e.target.value,
+                                      })
+                                  }
+                                  placeholder="Жобаның қысқаша сипаттамасы"
+                                  rows={4}
+                              />
+                            </div>
+                          </TabsContent>
+
+                          <TabsContent value="en" className="space-y-4">
+                            <div>
+                              <Label htmlFor="titleEn">Project Title</Label>
+                              <Input
+                                  id="titleEn"
+                                  value={projectForm.titleEn}
+                                  onChange={(e) =>
+                                      setProjectForm({...projectForm, titleEn: e.target.value})
+                                  }
+                                  placeholder="Enter project title"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="descriptionEn">Project Description</Label>
+                              <Textarea
+                                  id="descriptionEn"
+                                  value={projectForm.descriptionEn}
+                                  onChange={(e) =>
+                                      setProjectForm({
+                                        ...projectForm,
+                                        descriptionEn: e.target.value,
+                                      })
+                                  }
+                                  placeholder="Brief project description"
+                                  rows={4}
+                              />
+                            </div>
+                          </TabsContent>
+                        </Tabs>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="category">Категория *</Label>
+                            <Input
+                                id="category"
+                                value={projectForm.category}
+                                onChange={(e) =>
+                                    setProjectForm({...projectForm, category: e.target.value})
+                                }
+                                placeholder="например: Web Development"
+                            />
+                          </div>
+
+                          <div>
+                            <Label htmlFor="tags">Теги</Label>
+                            <Input
+                                id="tags"
+                                value={projectForm.tags}
+                                onChange={(e) =>
+                                    setProjectForm({...projectForm, tags: e.target.value})
+                                }
+                                placeholder="React, TypeScript, Node.js"
+                            />
                           </div>
                         </div>
-                      )}
-                    </div>
 
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => toggleSubmissionStatus(submission.id)}
-                        disabled={updatingSubmissionId === submission.id}
-                      >
-                        {updatingSubmissionId === submission.id ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Сохранение...
-                          </>
-                        ) : submission.status === 'new' ? (
-                          <>
-                            <Check className="w-4 h-4 mr-2" />
-                            Отметить обработанной
-                          </>
-                        ) : (
-                          <>
-                            <X className="w-4 h-4 mr-2" />
-                            Отметить новой
-                          </>
-                        )}
-                      </Button>
+                        <div>
+                          <Label htmlFor="images">Изображение проекта</Label>
+                          <Input
+                              id="images"
+                              type="file"
+                              accept="image/*"
+                              onChange={handleImageUpload}
+                          />
+                          {projectForm.image && (
+                              <p className="text-sm text-gray-500 mt-1">
+                                {projectForm.image.name}
+                              </p>
+                          )}
+                        </div>
 
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => deleteSubmission(submission.id)}
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Удалить
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="settings" className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900">Site Settings</h2>
-
-            <div className="bg-white rounded-lg border p-6 space-y-6">
-              {isLoadingSettings ? (
-                <div className="flex items-center gap-3 text-gray-600">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Loading settings...</span>
+                        <div className="flex justify-end space-x-2">
+                          <Button
+                              variant="outline"
+                              onClick={() => {
+                                setIsProjectDialogOpen(false);
+                                setEditingProject(null);
+                              }}
+                          >
+                            Отмена
+                          </Button>
+                          <Button
+                              onClick={handleSaveProject}
+                              disabled={savingProject}
+                              className="bg-[#1973AE] hover:bg-[#155a8a]"
+                          >
+                            {savingProject ? 'Сохранение...' : 'Сохранить'}
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </div>
-              ) : (
-                <>
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-gray-900">Contact Information</h3>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Phone</Label>
-                        <Input value={settingsForm.phone} onChange={(e) => setSettingsForm((current) => ({ ...current, phone: e.target.value }))} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Email</Label>
-                        <Input value={settingsForm.email} onChange={(e) => setSettingsForm((current) => ({ ...current, email: e.target.value }))} />
-                      </div>
+                {isLoadingProjects ? (
+                    <div className="bg-white rounded-lg border p-10 text-center text-gray-500">
+                      Загрузка проектов...
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label>Address (RU)</Label>
-                        <Input value={settingsForm.address.ru} onChange={(e) => setSettingsForm((current) => ({ ...current, address: { ...current.address, ru: e.target.value } }))} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Address (KZ)</Label>
-                        <Input value={settingsForm.address.kz} onChange={(e) => setSettingsForm((current) => ({ ...current, address: { ...current.address, kz: e.target.value } }))} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Address (EN)</Label>
-                        <Input value={settingsForm.address.en} onChange={(e) => setSettingsForm((current) => ({ ...current, address: { ...current.address, en: e.target.value } }))} />
-                      </div>
+                ) : projects.length === 0 ? (
+                    <div className="bg-white rounded-lg border p-10 text-center text-gray-500">
+                      Проектов пока нет
                     </div>
-                  </div>
+                ) : (
+                    <div className="grid gap-4">
+                      {projects.map((project) => (
+                          <div
+                              key={project.id}
+                              className="bg-white rounded-lg border p-6 hover:shadow-md transition-shadow"
+                          >
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-3 mb-2">
+                                  <h3 className="text-lg font-semibold text-gray-900">
+                                    {project.title.ru}
+                                  </h3>
 
-                  <div className="space-y-4 pt-6 border-t">
-                    <h3 className="text-lg font-semibold text-gray-900">Social Links</h3>
+                                  <Badge variant={project.status === 'progress' ? 'secondary' : 'default'}>
+                                    {project.status === 'progress'
+                                        ? 'В разработке'
+                                        : project.status === 'done'
+                                            ? 'Завершено'
+                                            : project.status === 'discovery'
+                                                ? 'Исследование'
+                                                : project.status}
+                                  </Badge>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Instagram</Label>
-                        <Input value={settingsForm.instagram || ''} onChange={(e) => setSettingsForm((current) => ({ ...current, instagram: e.target.value }))} placeholder="https://instagram.com/..." />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>LinkedIn</Label>
-                        <Input value={settingsForm.linkedin || ''} onChange={(e) => setSettingsForm((current) => ({ ...current, linkedin: e.target.value }))} placeholder="https://linkedin.com/..." />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Telegram</Label>
-                        <Input value={settingsForm.telegram || ''} onChange={(e) => setSettingsForm((current) => ({ ...current, telegram: e.target.value }))} placeholder="https://t.me/..." />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>WhatsApp</Label>
-                        <Input value={settingsForm.whatsapp || ''} onChange={(e) => setSettingsForm((current) => ({ ...current, whatsapp: e.target.value }))} placeholder="https://wa.me/..." />
-                      </div>
+                                  {!project.isVisible && <Badge variant="outline">Скрыт</Badge>}
+                                </div>
+
+                                <p className="text-sm text-gray-600 mb-3">{project.description.ru}</p>
+
+                                <div className="flex flex-wrap gap-2">
+                                  {project.tags.map((tag, idx) => (
+                                      <span
+                                          key={idx}
+                                          className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
+                                      >
+                              {tag}
+                            </span>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center space-x-2 ml-4">
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={projectActionId === project.id}
+                                    onClick={() => toggleProjectPublish(project.id)}
+                                >
+                                  {project.isVisible ? (
+                                      <Eye className="w-4 h-4"/>
+                                  ) : (
+                                      <EyeOff className="w-4 h-4"/>
+                                  )}
+                                </Button>
+
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleEditProject(project.id)}
+                                >
+                                  <Edit className="w-4 h-4"/>
+                                </Button>
+
+                                <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    disabled={projectActionId === project.id}
+                                    onClick={() => deleteProject(project.id)}
+                                >
+                                  <Trash2 className="w-4 h-4"/>
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                      ))}
                     </div>
-                  </div>
+                )}
+              </TabsContent>
 
-                  <div className="pt-6">
-                    <Button className="bg-[#1973AE] hover:bg-[#155a8a]" disabled={isSavingSettings} onClick={() => void saveSettings()}>
-                      {isSavingSettings && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                      Save changes
+              <TabsContent value="submissions" className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold text-gray-900">Заявки клиентов</h2>
+                  <div className="flex space-x-2">
+                    <Badge variant="secondary">
+                      Всего: {submissions.length}
+                    </Badge>
+                    <Badge variant="destructive">
+                      Новые: {submissions.filter((s) => s.status === 'new').length}
+                    </Badge>
+                    <Button variant="outline" onClick={loadSubmissions} disabled={isLoadingSubmissions}>
+                      {isLoadingSubmissions ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : null}
+                      Обновить
                     </Button>
                   </div>
-                </>
-              )}
-            </div>
-          </TabsContent>
+                </div>
 
-          <TabsContent value="vacancies" className="space-y-6">
-            <VacanciesManagement />
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
-  );
-}
+                {isLoadingSubmissions ? (
+                    <div className="bg-white rounded-lg border p-10 text-center text-gray-500">
+                      Загрузка заявок...
+                    </div>
+                ) : submissions.length === 0 ? (
+                    <div className="bg-white rounded-lg border p-10 text-center text-gray-500">
+                      Заявок пока нет
+                    </div>
+                ) : (
+                    <div className="grid gap-4">
+                      {submissions.map((submission) => (
+                          <div
+                              key={submission.id}
+                              className={`bg-white rounded-lg border p-6 ${
+                                  submission.status === 'new' ? 'border-l-4 border-l-[#39D2ED]' : ''
+                              }`}
+                          >
+                            <div className="flex justify-between items-start mb-4">
+                              <div>
+                                <h3 className="text-lg font-semibold text-gray-900">{submission.name}</h3>
+                                <p className="text-sm text-gray-600">{submission.company || 'Без компании'}</p>
+                              </div>
+                              <Badge variant={submission.status === 'new' ? 'destructive' : 'secondary'}>
+                                {submission.status === 'new' ? 'Новая' : 'Обработано'}
+                              </Badge>
+                            </div>
+
+                            <div className="space-y-2 mb-4">
+                              <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                  <span className="text-gray-500">Email:</span>
+                                  <p className="text-gray-900">{submission.email || '—'}</p>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500">Телефон:</span>
+                                  <p className="text-gray-900">{submission.phone || '—'}</p>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500">Услуга:</span>
+                                  <p className="text-gray-900">{getLabel(submission.service, serviceLabelMap)}</p>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500">Бюджет:</span>
+                                  <p className="text-gray-900">{getLabel(submission.budget, budgetLabelMap)}</p>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500">Срок:</span>
+                                  <p className="text-gray-900">{getLabel(submission.timeline, timelineLabelMap)}</p>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500">Дата:</span>
+                                  <p className="text-gray-900">{formatDateTime(submission.createdAt)}</p>
+                                </div>
+                              </div>
+
+                              <div>
+                                <span className="text-sm text-gray-500">Описание:</span>
+                                <p className="text-sm text-gray-900 mt-1">{submission.description || '—'}</p>
+                              </div>
+
+                              {submission.attachments.length > 0 && (
+                                  <div>
+                                    <span className="text-sm text-gray-500">Файлы:</span>
+                                    <div className="flex flex-wrap gap-2 mt-2">
+                                      {submission.attachments.map((file, idx) => (
+                                          <Button
+                                              key={`${submission.id}-${idx}`}
+                                              type="button"
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={() => openAttachment(file)}
+                                              className="h-auto py-1.5"
+                                          >
+                                            <Paperclip className="w-4 h-4 mr-2"/>
+                                            {file.name}
+                                          </Button>
+                                      ))}
+                                    </div>
+                                  </div>
+                              )}
+                            </div>
+
+                            <div className="flex space-x-2">
+                              <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => toggleSubmissionStatus(submission.id)}
+                                  disabled={updatingSubmissionId === submission.id}
+                              >
+                                {updatingSubmissionId === submission.id ? (
+                                    <>
+                                      <Loader2 className="w-4 h-4 mr-2 animate-spin"/>
+                                      Сохранение...
+                                    </>
+                                ) : submission.status === 'new' ? (
+                                    <>
+                                      <Check className="w-4 h-4 mr-2"/>
+                                      Отметить обработанной
+                                    </>
+                                ) : (
+                                    <>
+                                      <X className="w-4 h-4 mr-2"/>
+                                      Отметить новой
+                                    </>
+                                )}
+                              </Button>
+
+                              <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => deleteSubmission(submission.id)}
+                              >
+                                <Trash2 className="w-4 h-4 mr-2"/>
+                                Удалить
+                              </Button>
+                            </div>
+                          </div>
+                      ))}
+                    </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="settings" className="space-y-6">
+                <h2 className="text-2xl font-bold text-gray-900">Site Settings</h2>
+
+                <div className="bg-white rounded-lg border p-6 space-y-6">
+                  {isLoadingSettings ? (
+                      <div className="flex items-center gap-3 text-gray-600">
+                        <Loader2 className="w-4 h-4 animate-spin"/>
+                        <span>Loading settings...</span>
+                      </div>
+                  ) : (
+                      <>
+                        <div className="space-y-4">
+                          <h3 className="text-lg font-semibold text-gray-900">Contact Information</h3>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Phone</Label>
+                              <Input value={settingsForm.phone} onChange={(e) => setSettingsForm((current) => ({
+                                ...current,
+                                phone: e.target.value
+                              }))}/>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Email</Label>
+                              <Input value={settingsForm.email} onChange={(e) => setSettingsForm((current) => ({
+                                ...current,
+                                email: e.target.value
+                              }))}/>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                              <Label>Address (RU)</Label>
+                              <Input value={settingsForm.address.ru} onChange={(e) => setSettingsForm((current) => ({
+                                ...current,
+                                address: {...current.address, ru: e.target.value}
+                              }))}/>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Address (KZ)</Label>
+                              <Input value={settingsForm.address.kz} onChange={(e) => setSettingsForm((current) => ({
+                                ...current,
+                                address: {...current.address, kz: e.target.value}
+                              }))}/>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Address (EN)</Label>
+                              <Input value={settingsForm.address.en} onChange={(e) => setSettingsForm((current) => ({
+                                ...current,
+                                address: {...current.address, en: e.target.value}
+                              }))}/>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4 pt-6 border-t">
+                          <h3 className="text-lg font-semibold text-gray-900">Social Links</h3>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Instagram</Label>
+                              <Input value={settingsForm.instagram || ''}
+                                     onChange={(e) => setSettingsForm((current) => ({
+                                       ...current,
+                                       instagram: e.target.value
+                                     }))} placeholder="https://instagram.com/..."/>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>LinkedIn</Label>
+                              <Input value={settingsForm.linkedin || ''}
+                                     onChange={(e) => setSettingsForm((current) => ({
+                                       ...current,
+                                       linkedin: e.target.value
+                                     }))} placeholder="https://linkedin.com/..."/>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Telegram</Label>
+                              <Input value={settingsForm.telegram || ''}
+                                     onChange={(e) => setSettingsForm((current) => ({
+                                       ...current,
+                                       telegram: e.target.value
+                                     }))} placeholder="https://t.me/..."/>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>WhatsApp</Label>
+                              <Input value={settingsForm.whatsapp || ''}
+                                     onChange={(e) => setSettingsForm((current) => ({
+                                       ...current,
+                                       whatsapp: e.target.value
+                                     }))} placeholder="https://wa.me/..."/>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="pt-6">
+                          <Button className="bg-[#1973AE] hover:bg-[#155a8a]" disabled={isSavingSettings}
+                                  onClick={() => void saveSettings()}>
+                            {isSavingSettings && <Loader2 className="w-4 h-4 mr-2 animate-spin"/>}
+                            Save changes
+                          </Button>
+                        </div>
+                      </>
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="vacancies" className="space-y-6">
+                <VacanciesManagement/>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+    );
+  }

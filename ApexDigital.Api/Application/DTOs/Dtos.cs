@@ -51,6 +51,7 @@ public record CreateServiceRequestDto
     [StringLength(2000)] public string? Description { get; init; }
 }
 
+
 public record ServiceRequestDto
 {
     public string Id { get; init; } = "";
@@ -117,6 +118,24 @@ public record CreateProjectDto
     public LocalizedStringDto? Results { get; init; }
     public bool IsVisible { get; init; } = true;
     public LocalizedStringDto? Timeline { get; init; }
+}
+
+public class CreateProjectForm
+{
+    public string TitleRu { get; init; } = "";
+    public string TitleKz { get; init; } = "";
+    public string TitleEn { get; init; } = "";
+
+    public string DescriptionRu { get; init; } = "";
+    public string DescriptionKz { get; init; } = "";
+    public string DescriptionEn { get; init; } = "";
+
+    public string Category { get; init; } = "web";
+    public string Status { get; init; } = "progress";
+    public string? Tags { get; init; }
+    public bool IsVisible { get; init; } = true;
+
+    public IFormFile? Image { get; init; }
 }
 
 // ========== JOBS ==========
