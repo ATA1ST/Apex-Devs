@@ -62,7 +62,7 @@ export function ServicesPage() {
         { ru: 'Real-time и WebSocket', kz: 'Real-time және WebSocket', en: 'Real-time and WebSocket' },
         { ru: 'Оптимизация и масштабирование', kz: 'Оңтайландыру және масштабтау', en: 'Optimization and scaling' },
       ],
-      technologies: ['Node.js', 'Python', 'Java', 'Go', 'PostgreSQL', 'MongoDB'],
+      technologies: ['Node.js', 'Python', 'Java', 'С#', 'PostgreSQL', 'MongoDB'],
       gradient: 'from-green-500/20 to-emerald-500/20',
       iconBg: 'bg-green-500/10',
       iconColor: 'text-green-600',

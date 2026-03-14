@@ -34,6 +34,7 @@ import { clearSession, authFetch, downloadProtectedFile } from '../config/auth';
 import { toast } from 'sonner';
 import { VacanciesManagement } from './admin/VacanciesManagement';
 import type { SiteSettingsDto } from '../types/api';
+import apexLogo from '../../assets/f7ddf9292a18e8b118f1c91f86089d79cd5e1586.png';
 
 interface AttachmentInfoDto {
   name: string;
@@ -557,7 +558,7 @@ export function AdminPanel() {
             <div className="container mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex h-16 items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="h-8 w-8 rounded bg-gradient-to-br from-[#1973AE] to-[#39D2ED]"/>
+                  <img src={apexLogo} alt="Apex Digital" className="h-10 w-auto" />
                   <div>
                     <h1 className="text-lg font-semibold text-gray-900">Административная панель</h1>
                     <p className="text-xs text-gray-500">Apex Digital</p>
